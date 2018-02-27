@@ -2,7 +2,7 @@
 
 ### Overview
 
-Xiphos is a UCI chess engine. The engine employs the modern search techniques and supports multithreading.
+Xiphos is a UCI chess engine. The engine employs the modern search techniques and supports multithreading. The latest release, including the binaries for various platforms, can be found [here](https://github.com/milostatarevic/xiphos/releases).
 
 ### Acknowledgements
 
