@@ -23,6 +23,11 @@
 
 #define VERSION                      "Xiphos 0.1"
 #define AUTHOR                       "Milos Tatarevic"
+#ifdef _MAGIC
+  #define ARCH                       "SSE"
+#else
+  #define ARCH                       "BMI2"
+#endif
 
 #define MAX_THREADS                  64
 #define DEFAULT_THREADS              1

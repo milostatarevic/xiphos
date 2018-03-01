@@ -311,7 +311,7 @@ void uci()
   search_data_t sd, *threads_search_data;
   char *buf, input_buf[READ_BUFFER_SIZE];
 
-  print("%s by %s\n", VERSION, AUTHOR);
+  print("%s %s by %s\n", VERSION, ARCH, AUTHOR);
 
   threads_search_data = NULL;
   set_max_threads(&threads_search_data, DEFAULT_THREADS);
@@ -335,7 +335,7 @@ void uci()
     buf = input_buf;
     if (_cmd_cmp(&buf, CMD_UCI))
     {
-      print("id name %s\n", VERSION);
+      print("id name %s %s\n", VERSION, ARCH);
       print("id author %s\n", AUTHOR);
       print("option name Hash type spin default %d min 1 max 4096\n", DEFAULT_HASH_SIZE_IN_MB);
       print("option name Threads type spin default 1 min 1 max %d\n", MAX_THREADS);
