@@ -1,13 +1,16 @@
 
 CC = gcc
-CFLAGS = -O3 -flto -mbmi2 -Wall -lm -lpthread
+CFLAGS = -O3 -flto -Wall
+LIBS = -lm -lpthread
 
 TARGET = xiphos
 SRCS = src/*.c
 
-$(TARGET):
-	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET)
+bmi2:
+	$(CC) $(CFLAGS) $(SRCS) -mbmi2 -o $(TARGET)-bmi2 $(LIBS)
+
+magic:
+	$(CC) $(CFLAGS) $(SRCS) -msse -D_MAGIC -o $(TARGET)-magic $(LIBS)
 
 clean:
 	rm $(TARGET)
-
