@@ -129,11 +129,11 @@ void reset_hash_key(search_data_t *sd)
   sd->hash_keys[sd->hash_keys_cnt] = sd->hash_key;
 }
 
-void init_hash(int size_in_mb)
+uint64_t init_hash(int size_in_mb)
 {
-  int size, rounded_size;
+  uint64_t size, rounded_size;
 
-  size = (size_in_mb << 20) / sizeof(hash_item_t);
+  size = ((uint64_t)size_in_mb << 20) / sizeof(hash_item_t);
   rounded_size = 1;
   while (size >>= 1)
     rounded_size <<= 1;
@@ -141,4 +141,6 @@ void init_hash(int size_in_mb)
   hash_store.mask = rounded_size - 1;
   hash_store.size = rounded_size * sizeof(hash_item_t);
   hash_store.items = (hash_item_t *)realloc(hash_store.items, hash_store.size);
+
+  return hash_store.size;
 }

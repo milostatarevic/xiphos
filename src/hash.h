@@ -55,6 +55,6 @@ hash_data_t get_hash_data(search_data_t *);
 void set_hash_data(search_data_t *, int, move_t, int, int, int);
 void set_hash_iteration();
 void reset_hash_key(search_data_t *);
-void init_hash(int);
+uint64_t init_hash(int);
 
 #endif

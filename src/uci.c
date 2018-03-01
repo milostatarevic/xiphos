@@ -276,12 +276,14 @@ void uci_info(int depth, int score)
 
 void set_hash_size(search_data_t *sd, int hash_size_in_mb)
 {
+  uint64_t allocated_memory;
+
   if (hash_size_in_mb < 1)
     return;
 
-  init_hash(hash_size_in_mb);
+  allocated_memory = init_hash(hash_size_in_mb);
   reset_hash_key(sd);
-  print("hash=%dMB\n", hash_size_in_mb);
+  print("hash=%dMB\n", allocated_memory >> 20);
 }
 
 void set_max_threads(search_data_t **threads_search_data, int thread_cnt)
