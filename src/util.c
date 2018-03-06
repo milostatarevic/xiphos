@@ -23,11 +23,11 @@
 
 #include "position.h"
 
-int time_in_ms()
+uint64_t time_in_ms()
 {
   struct timespec t;
   clock_gettime(CLOCK_MONOTONIC, &t);
-  return t.tv_sec * 1000 + t.tv_nsec / 1000000;
+  return (uint64_t)t.tv_sec * 1000 + t.tv_nsec / 1000000;
 }
 
 void sleep_ms(int sleep_in_ms)

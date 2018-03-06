@@ -21,7 +21,7 @@
 
 #include "move.h"
 
-int time_in_ms();
+uint64_t time_in_ms();
 void sleep_ms(int);
 void print(const char *, ...);
 void write_input_log(char *);

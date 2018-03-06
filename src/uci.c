@@ -41,7 +41,9 @@
 #define OPTION_HASH                 "setoption name Hash value"
 #define OPTION_THREADS              "setoption name Threads value"
 
-#define REDUCE_TIME                 50
+#define REDUCE_TIME                 80
+#define REDUCE_TIME_PER_MOVE        5
+
 #define EXTEND_TIME_FOR_CNT         25
 #define DEFAULT_MOVES_TO_GO         25
 #define READ_BUFFER_SIZE            65536
@@ -228,7 +230,8 @@ void uci_go(search_data_t *sd, search_data_t *threads_search_data, char *buf)
       shared_search_info.max_time =
         _max(shared_search_info.go.time - REDUCE_TIME, 0) /
           _min(shared_search_info.go.movestogo, EXTEND_TIME_FOR_CNT);
-      shared_search_info.max_time = _max(shared_search_info.max_time, 1);
+      shared_search_info.max_time =
+        _max(shared_search_info.max_time - REDUCE_TIME_PER_MOVE, 1);
     }
   }
 
