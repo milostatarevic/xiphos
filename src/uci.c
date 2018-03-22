@@ -41,8 +41,11 @@
 #define OPTION_HASH                 "setoption name Hash value"
 #define OPTION_THREADS              "setoption name Threads value"
 
+#define MAX_REDUCE_TIME             1000
 #define REDUCE_TIME                 80
 #define REDUCE_TIME_PER_MOVE        5
+#define EXTEND_MOVE_TIME            80
+#define TIME_REDUCTION_COEFF        0.9
 
 #define EXTEND_TIME_FOR_CNT         25
 #define DEFAULT_MOVES_TO_GO         25
@@ -123,13 +126,13 @@ void read_fen(search_data_t *sd, char *buf, int full_reset)
     switch (c)
     {
       case 'K':
-        pos->c_flag |= C_FLAG_WHITE_RIGHT; break;
+        pos->c_flag |= C_FLAG_WR; break;
       case 'Q':
-        pos->c_flag |= C_FLAG_WHITE_LEFT; break;
+        pos->c_flag |= C_FLAG_WL; break;
       case 'k':
-        pos->c_flag |= C_FLAG_BLACK_RIGHT; break;
+        pos->c_flag |= C_FLAG_BR; break;
       case 'q':
-        pos->c_flag |= C_FLAG_BLACK_LEFT; break;
+        pos->c_flag |= C_FLAG_BL; break;
     }
   }
 
@@ -162,7 +165,7 @@ void uci_position_startpos(search_data_t *sd, char *buf)
 
 void uci_go(search_data_t *sd, search_data_t *threads_search_data, char *buf)
 {
-  int max_threads;
+  int max_threads, max_time, max_time_allowed, moves_to_go;
   char *t;
   position_t *pos;
 
@@ -215,9 +218,6 @@ void uci_go(search_data_t *sd, search_data_t *threads_search_data, char *buf)
   }
   else
   {
-    if (shared_search_info.go.movestogo == 0)
-      shared_search_info.go.movestogo = DEFAULT_MOVES_TO_GO;
-
     if (shared_search_info.go.movetime > 0)
       shared_search_info.max_time =
         _max(shared_search_info.go.movetime - REDUCE_TIME, 1);
@@ -225,13 +225,30 @@ void uci_go(search_data_t *sd, search_data_t *threads_search_data, char *buf)
     {
       if (shared_search_info.go.time < 0)
         shared_search_info.go.time = 1;
-      shared_search_info.go.time += shared_search_info.go.inc;
 
-      shared_search_info.max_time =
-        _max(shared_search_info.go.time - REDUCE_TIME, 0) /
-          _min(shared_search_info.go.movestogo, EXTEND_TIME_FOR_CNT);
-      shared_search_info.max_time =
-        _max(shared_search_info.max_time - REDUCE_TIME_PER_MOVE, 1);
+      moves_to_go = _min(shared_search_info.go.movestogo, EXTEND_TIME_FOR_CNT);
+      if (moves_to_go == 0)
+        moves_to_go = DEFAULT_MOVES_TO_GO;
+
+      max_time_allowed = _max(shared_search_info.go.time - REDUCE_TIME, 1);
+      max_time = _max(
+        max_time_allowed / moves_to_go +
+        shared_search_info.go.inc - REDUCE_TIME_PER_MOVE, 1
+      );
+
+      // if possible, try to leave more time to GUI
+      if (shared_search_info.go.movestogo <= 1 && max_time > EXTEND_MOVE_TIME &&
+          max_time - MAX_REDUCE_TIME < shared_search_info.go.time)
+      {
+        max_time =
+          _min(max_time,
+               _max(max_time * TIME_REDUCTION_COEFF,
+                    shared_search_info.go.time - MAX_REDUCE_TIME)
+              );
+        max_time = _max(max_time, EXTEND_MOVE_TIME);
+      }
+
+      shared_search_info.max_time = _min(max_time, max_time_allowed);
     }
   }
 

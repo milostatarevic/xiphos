@@ -198,7 +198,10 @@ uint64_t _mask(int piece, int sq)
 
 static inline uint64_t _pdep(uint64_t occ, uint64_t mask)
 {
-#ifdef _MAGIC
+#ifdef _BMI2
+  uint64_t r;
+  asm("pdepq %2, %1, %0" : "=r" (r) : "r" (occ), "r" (mask));
+#else
   uint64_t r, i;
   r = 0; i = 1;
   _loop(mask)
@@ -206,9 +209,6 @@ static inline uint64_t _pdep(uint64_t occ, uint64_t mask)
     if (occ & i) r |= _b(_bsf(mask));
     i <<= 1;
   }
-#else
-  uint64_t r;
-  asm("pdepq %2, %1, %0" : "=r" (r) : "r" (occ), "r" (mask));
 #endif
   return r;
 }
@@ -233,7 +233,7 @@ void init_attack_bitboards()
 
       att_lookup->mask = mask;
       att_lookup->attacks = att;
-#ifdef _MAGIC
+#ifndef _BMI2
       att_lookup->magic = magic[p][sq];
       att_lookup->shift = BOARD_SIZE - pcnt;
 #endif
@@ -241,10 +241,10 @@ void init_attack_bitboards()
       for(i = 0; i < (1 << pcnt); i ++)
       {
         occ = _pdep(i, mask);
-#ifdef _MAGIC
-        j = (occ * att_lookup->magic) >> att_lookup->shift;
-#else
+#ifdef _BMI2
         j = _pext(occ, mask);
+#else
+        j = (occ * att_lookup->magic) >> att_lookup->shift;
 #endif
         att[j] = _piece_attack(occ, piece, sq);
       }

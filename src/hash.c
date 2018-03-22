@@ -54,7 +54,7 @@ void init_z_keys()
     for (j = 0; j < Z_KEYS_MAX_INDEX; j ++)
       shared_z_keys.positions[i][j] = rand64();
 
-  for (i = 0; i < C_FLAGS_MAX; i ++)
+  for (i = 0; i < C_FLAG_MAX; i ++)
     shared_z_keys.c_flags[i] = rand64();
 
   shared_z_keys.side_flag = rand64();

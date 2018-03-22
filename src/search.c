@@ -36,6 +36,7 @@
 #define IID_DEPTH                     5
 #define LMP_DEPTH                     4
 #define LMR_DEPTH                     3
+#define MIN_DEPTH_TO_REACH            4
 #define START_THREADS_DEPTH           4
 #define START_ASPIRATION_DEPTH        4
 
@@ -87,7 +88,7 @@ static inline int draw(search_data_t *sd, int repetitions)
 
 int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
 {
-  int hash_depth, hash_bound, best_score, score;
+  int hash_bound, best_score, score;
   move_t move, best_move, hash_move;
   hash_data_t hash_data;
   position_t *pos;
@@ -101,20 +102,21 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
   if (ply >= MAX_PLY) return eval(pos);
   if (draw(sd, 1)) return 0;
 
-  hash_depth = (pos->in_check || depth == 0) ? 0 : -1;
   hash_move = 0;
-
-  hash_data = get_hash_data(sd);
-  if (hash_data.raw && hash_data.depth >= hash_depth)
+  if (depth == 0 || pos->in_check)
   {
-    hash_move = hash_data.move;
-    hash_bound = hash_data.bound;
+    hash_data = get_hash_data(sd);
+    if (hash_data.raw)
+    {
+      hash_move = hash_data.move;
+      hash_bound = hash_data.bound;
 
-    score = adjust_hash_score(_m_score(hash_move), ply);
-    if ((hash_bound == HASH_LOWER_BOUND && score >= beta) ||
-        (hash_bound == HASH_UPPER_BOUND && score <= alpha) ||
-        (hash_bound == HASH_EXACT))
-      return score;
+      score = adjust_hash_score(_m_score(hash_move), ply);
+      if ((hash_bound == HASH_LOWER_BOUND && score >= beta) ||
+          (hash_bound == HASH_UPPER_BOUND && score <= alpha) ||
+          (hash_bound == HASH_EXACT))
+        return score;
+    }
   }
 
   if (pos->in_check)
@@ -157,7 +159,8 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
       }
     }
   }
-  set_hash_data(sd, ply, best_move, best_score, hash_depth, hash_bound);
+  if (depth == 0 || pos->in_check)
+    set_hash_data(sd, ply, best_move, best_score, 0, hash_bound);
   return best_score;
 }
 
@@ -514,9 +517,10 @@ void search(search_data_t *sd, search_data_t *threads_search_data)
 
   while (!shared_search_info.done)
   {
-    if (time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.max_time)
+    if (time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.max_time &&
+        shared_search_info.depth >= MIN_DEPTH_TO_REACH)
       shared_search_info.done = 1;
-    sleep_ms(4);
+    sleep_ms(2);
   }
 
   pthread_attr_destroy(&attr);

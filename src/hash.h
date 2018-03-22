@@ -37,15 +37,14 @@ enum {
 
 struct {
   uint64_t positions[SQ_LIMIT][Z_KEYS_MAX_INDEX];
-  uint64_t c_flags[C_FLAGS_MAX];
+  uint64_t c_flags[C_FLAG_MAX];
   uint64_t side_flag;
 } shared_z_keys;
 
 typedef union {
   struct {
     move_t move;
-    int8_t depth;
-    uint8_t bound, iter;
+    uint8_t depth, bound, iter;
   };
   uint64_t raw;
 } hash_data_t;

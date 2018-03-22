@@ -20,7 +20,7 @@
 #define BITBOARD_H
 
 #include "game.h"
-#ifdef _MAGIC
+#ifndef _BMI2
   #include "magic.h"
 #endif
 
@@ -43,7 +43,7 @@
 typedef struct {
   uint64_t *attacks;
   uint64_t mask;
-#ifdef _MAGIC
+#ifndef _BMI2
   uint64_t magic;
   uint32_t shift;
 #endif
@@ -73,7 +73,7 @@ static inline int _popcnt(uint64_t b)
   return r;
 }
 
-#ifndef _MAGIC
+#ifdef _BMI2
   static inline uint64_t _pext(uint64_t occ, uint64_t mask)
   {
     uint64_t r;
@@ -87,10 +87,10 @@ static inline uint64_t bishop_attack(uint64_t occ, int sq)
   attack_lookup_t *att;
 
   att = bishop_attack_lookup + sq;
-#ifdef _MAGIC
-  return att->attacks[((occ & att->mask) * att->magic) >> att->shift];
-#else
+#ifdef _BMI2
   return att->attacks[_pext(occ, att->mask)];
+#else
+  return att->attacks[((occ & att->mask) * att->magic) >> att->shift];
 #endif
 }
 
@@ -99,10 +99,10 @@ static inline uint64_t rook_attack(uint64_t occ, int sq)
   attack_lookup_t *att;
 
   att = rook_attack_lookup + sq;
-#ifdef _MAGIC
-  return att->attacks[((occ & att->mask) * att->magic) >> att->shift];
-#else
+#ifdef _BMI2
   return att->attacks[_pext(occ, att->mask)];
+#else
+  return att->attacks[((occ & att->mask) * att->magic) >> att->shift];
 #endif
 }
 

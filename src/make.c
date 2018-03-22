@@ -24,8 +24,8 @@
 
 int rook_c_flag_mask[BOARD_SIZE];
 const int king_c_flag_mask[N_SIDES] = {
-  ~(C_FLAG_WHITE_LEFT | C_FLAG_WHITE_RIGHT),
-  ~(C_FLAG_BLACK_LEFT | C_FLAG_BLACK_RIGHT),
+  ~(C_FLAG_WL | C_FLAG_WR),
+  ~(C_FLAG_BL | C_FLAG_BR),
 };
 
 #define _update_position_hash_key(pos, hash_key, piece, sq)                    \
@@ -251,14 +251,14 @@ void init_rook_c_flag_mask()
   int i, c_flag_init;
 
   c_flag_init =
-      C_FLAG_WHITE_LEFT | C_FLAG_WHITE_RIGHT |
-      C_FLAG_BLACK_LEFT | C_FLAG_BLACK_RIGHT;
+      C_FLAG_WL | C_FLAG_WR |
+      C_FLAG_BL | C_FLAG_BR;
 
   for (i = 0; i < BOARD_SIZE; i ++)
     rook_c_flag_mask[i] = c_flag_init;
 
-  rook_c_flag_mask[A1] ^= C_FLAG_WHITE_LEFT;
-  rook_c_flag_mask[H1] ^= C_FLAG_WHITE_RIGHT;
-  rook_c_flag_mask[A8] ^= C_FLAG_BLACK_LEFT;
-  rook_c_flag_mask[H8] ^= C_FLAG_BLACK_RIGHT;
+  rook_c_flag_mask[A1] ^= C_FLAG_WL;
+  rook_c_flag_mask[H1] ^= C_FLAG_WR;
+  rook_c_flag_mask[A8] ^= C_FLAG_BL;
+  rook_c_flag_mask[H8] ^= C_FLAG_BR;
 }

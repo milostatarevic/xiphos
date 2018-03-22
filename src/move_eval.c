@@ -23,18 +23,6 @@
 #define KILLER_MOVE_SCORE    ((1 << KILLER_MOVE_SHIFT) - 1)
 #define COUNTER_MOVE_SCORE   (KILLER_MOVE_SCORE - MAX_KILLER_MOVES)
 
-static inline int move_is_quiet(position_t *pos, move_t move)
-{
-  if (pos->board[_m_to(move)] != EMPTY)
-    return 0;
-
-  if (_equal_to(pos->board[_m_from(move)], PAWN) &&
-     (_m_promoted_to(move) || _m_to(move) == pos->ep_sq))
-    return 0;
-
-  return 1;
-}
-
 void eval_material_moves(position_t *pos, move_t *moves, int moves_cnt)
 {
   int i, piece;
@@ -49,9 +37,9 @@ void eval_material_moves(position_t *pos, move_t *moves, int moves_cnt)
   }
 }
 
-void eval_quiet_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
+int eval_quiet_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
 {
-  int i, score;
+  int i, cnt;
   move_t move, killer_0, killer_1, counter;
   position_t *pos;
 
@@ -60,19 +48,27 @@ void eval_quiet_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
   killer_1 = _m_base(sd->killer_moves[ply][1]);
   counter = _m_base(get_counter_move(sd));
 
+  cnt = 0;
   for (i = 0; i < moves_cnt; i ++)
   {
     move = _m_base(moves[i]);
-    if (move == killer_0)
-      score = KILLER_MOVE_SCORE;
-    else if (move == killer_1)
-      score = KILLER_MOVE_SCORE - 1;
-    else if (move == counter)
-      score = COUNTER_MOVE_SCORE;
-    else
-      score = get_h_score(sd, pos, move);
-    moves[i] = _m_set_quiet(_m_with_score(move, score));
+    if (move != killer_0 && move != killer_1 && move != counter)
+      moves[cnt ++] = _m_set_quiet(_m_with_score(move, get_h_score(sd, pos, move)));
   }
+
+  return cnt;
+}
+
+static inline int move_is_quiet(position_t *pos, move_t move)
+{
+  if (pos->board[_m_to(move)] != EMPTY)
+    return 0;
+
+  if (_equal_to(pos->board[_m_from(move)], PAWN) &&
+     (_m_promoted_to(move) || _m_to(move) == pos->ep_sq))
+    return 0;
+
+  return 1;
 }
 
 void eval_all_moves(search_data_t *sd, move_t *moves, int moves_cnt)

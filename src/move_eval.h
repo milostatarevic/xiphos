@@ -24,7 +24,7 @@
 #include "search.h"
 
 void eval_material_moves(position_t *, move_t *, int);
-void eval_quiet_moves(search_data_t *, move_t *, int, int);
+int eval_quiet_moves(search_data_t *, move_t *, int, int);
 void eval_all_moves(search_data_t *, move_t *, int);
 
 #endif

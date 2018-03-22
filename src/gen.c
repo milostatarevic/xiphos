@@ -173,19 +173,17 @@ static inline void _add_castling_moves(position_t *pos, move_t **moves)
   m_ptr = *moves;
   if (pos->side == WHITE)
   {
-    if ((pos->c_flag & C_FLAG_WHITE_RIGHT) &&
-        pos->board[F1] == EMPTY && pos->board[G1] == EMPTY)
+    if ((pos->c_flag & C_FLAG_WR) && pos->board[F1] == EMPTY && pos->board[G1] == EMPTY)
       _add_move(E1, G1);
-    if ((pos->c_flag & C_FLAG_WHITE_LEFT) &&
+    if ((pos->c_flag & C_FLAG_WL) &&
         pos->board[B1] == EMPTY && pos->board[C1] == EMPTY && pos->board[D1] == EMPTY)
       _add_move(E1, C1);
   }
   else if (pos->side == BLACK)
   {
-    if ((pos->c_flag & C_FLAG_BLACK_RIGHT) &&
-        pos->board[F8] == EMPTY && pos->board[G8] == EMPTY)
+    if ((pos->c_flag & C_FLAG_BR) && pos->board[F8] == EMPTY && pos->board[G8] == EMPTY)
       _add_move(E8, G8);
-    if ((pos->c_flag & C_FLAG_BLACK_LEFT) &&
+    if ((pos->c_flag & C_FLAG_BL) &&
         pos->board[B8] == EMPTY && pos->board[C8] == EMPTY && pos->board[D8] == EMPTY)
       _add_move(E8, C8);
   }

@@ -6,11 +6,11 @@ LIBS = -lm -lpthread
 TARGET = xiphos
 SRCS = src/*.c
 
-bmi2:
-	$(CC) $(CFLAGS) -mbmi2 $(SRCS) -o $(TARGET)-bmi2 $(LIBS)
+sse:
+	$(CC) $(CFLAGS) -msse $(SRCS) -o $(TARGET)-sse $(LIBS)
 
-magic:
-	$(CC) $(CFLAGS) -msse -D_MAGIC $(SRCS) -o $(TARGET)-magic $(LIBS)
+bmi2:
+	$(CC) $(CFLAGS) -D_BMI2 -mbmi2 $(SRCS) -o $(TARGET)-bmi2 $(LIBS)
 
 clean:
 	rm $(TARGET)

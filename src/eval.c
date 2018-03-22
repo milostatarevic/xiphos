@@ -112,7 +112,7 @@ int eval(position_t *pos)
 {
   int side, score_mid, score_end, k_score, threat_score, k_cnt, pcnt, k_sq, sq;
   uint64_t b, b0, k_zone, occ, occ_f, occ_o, n_occ, p_occ, p_occ_f, p_occ_o,
-           n_att, b_att, r_att, occ_o_att;
+           n_att, b_att, r_att;
   phash_data_t phash_data;
 
   phash_data = eval_pawns(pos);
@@ -132,7 +132,6 @@ int eval(position_t *pos)
     occ_o = pos->occ[side ^ 1];
     p_occ_f = p_occ & occ_f;
     p_occ_o = p_occ & occ_o;
-    occ_o_att = occ_o & ~p_occ;
     n_occ = ~(p_occ_f | pawn_attacks(p_occ_o, side ^ 1));
 
     n_att = knight_attack(occ, k_sq);
@@ -157,7 +156,7 @@ int eval(position_t *pos)
         score_end += pcnt << m_shift_end[piece];                               \
                                                                                \
         /* threats */                                                          \
-        threat_score += _popcnt(b & occ_o_att);                                \
+        threat_score += _popcnt(b & occ_o);                                    \
                                                                                \
         /* king safety */                                                      \
         b &= k_zone | att;                                                     \
@@ -177,9 +176,7 @@ int eval(position_t *pos)
     _score_piece(QUEEN, queen_attack, b_att,);
 
     // threats
-    threat_score <<= THREAT_SHIFT;
-    score_mid += threat_score;
-    score_end += threat_score;
+    score_end += threat_score << THREAT_SHIFT;
 
     // scale king safety
     score_mid += k_score * k_cnt_mul[_min(k_cnt, K_CNT_LIMIT - 1)];

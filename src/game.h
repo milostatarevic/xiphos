@@ -21,12 +21,12 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.1"
+#define VERSION                      "Xiphos 0.1.1"
 #define AUTHOR                       "Milos Tatarevic"
-#ifdef _MAGIC
-  #define ARCH                       "SSE"
-#else
+#ifdef _BMI2
   #define ARCH                       "BMI2"
+#else
+  #define ARCH                       "SSE"
 #endif
 
 #define MAX_THREADS                  64
@@ -49,11 +49,11 @@
 #define CHANGE_SIDE                  (1 << SIDE_SHIFT)
 #define BOARD_SIZE                   64
 
-#define C_FLAG_WHITE_LEFT            0x1
-#define C_FLAG_WHITE_RIGHT           0x2
-#define C_FLAG_BLACK_LEFT            0x4
-#define C_FLAG_BLACK_RIGHT           0x8
-#define C_FLAGS_MAX                  0x10
+#define C_FLAG_WL                    0x1
+#define C_FLAG_WR                    0x2
+#define C_FLAG_BL                    0x4
+#define C_FLAG_BR                    0x8
+#define C_FLAG_MAX                   0x10
 
 #define _max(a, b)                   ((a) >= (b) ? (a) : (b))
 #define _min(a, b)                   ((a) < (b) ? (a) : (b))
