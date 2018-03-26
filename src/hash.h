@@ -44,7 +44,8 @@ struct {
 typedef union {
   struct {
     move_t move;
-    uint8_t depth, bound, iter;
+    int8_t depth;
+    uint8_t bound, iter;
   };
   uint64_t raw;
 } hash_data_t;
