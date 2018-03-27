@@ -80,15 +80,20 @@ phash_data_t eval_pawns(position_t *pos)
     _loop(b)
     {
       sq = _bsf(b);
+      r = m ^ _rank(sq);
+      ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
 
-      // passers / distance bonus
-      if (!(_b_passer_area[side][sq] & p_occ_o))
+      // distance bonus / passers
+      if (_b_passer_area[side][sq] & p_occ_o)
       {
-        r = m ^ _rank(sq);
-        ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
+        distance_score += distance[ssq][k_sq_o] * r -
+                          distance[ssq][k_sq_f] * (r - 1);
+      }
+      else
+      {
+        passers_score += passer_bonus[r];
         distance_score += (distance[ssq][k_sq_o] << r) -
                           (distance[ssq][k_sq_f] << (r - 1));
-        passers_score += passer_bonus[r];
       }
 
       // doubled / isolated pawns
