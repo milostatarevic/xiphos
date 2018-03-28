@@ -24,6 +24,7 @@
 
 #define BAD_PAWNS_SHIFT           4
 #define CHECK_SHIFT               2
+#define PASSER_SHIFT              4
 #define THREAT_SHIFT              4
 #define KING_PAWNS_SHIFT          3
 #define K_CNT_LIMIT               8
@@ -58,12 +59,13 @@ void init_distance()
 phash_data_t eval_pawns(position_t *pos)
 {
   int m, r, side, sq, ssq, k_sq_f, k_sq_o, passers_score, bad_pawns, distance_score;
-  uint64_t b, p_occ, p_occ_f, p_occ_o, p_occ_x;
+  uint64_t b, passer_area, p_occ, p_occ_f, p_occ_o, p_occ_x;
   phash_data_t phash_data;
 
   if (get_phash_data(pos, &phash_data))
     return phash_data;
 
+  passer_area = 0;
   p_occ = pos->piece_occ[PAWN];
   passers_score = bad_pawns = distance_score = 0;
 
@@ -94,6 +96,8 @@ phash_data_t eval_pawns(position_t *pos)
         passers_score += passer_bonus[r];
         distance_score += (distance[ssq][k_sq_o] << r) -
                           (distance[ssq][k_sq_f] << (r - 1));
+        if (r >= 4)
+          passer_area |= _b(sq) | _b(ssq);
       }
 
       // doubled / isolated pawns
@@ -109,15 +113,16 @@ phash_data_t eval_pawns(position_t *pos)
   }
 
   bad_pawns <<= BAD_PAWNS_SHIFT;
-  return set_phash_data(pos, passers_score - bad_pawns,
-                             passers_score - bad_pawns + distance_score);
+  return set_phash_data(pos, passer_area,
+                        passers_score - bad_pawns,
+                        passers_score - bad_pawns + distance_score);
 }
 
 int eval(position_t *pos)
 {
   int side, score_mid, score_end, k_score, threat_score, k_cnt, pcnt, k_sq, sq;
   uint64_t b, b0, k_zone, occ, occ_f, occ_o, n_occ, p_occ, p_occ_f, p_occ_o,
-           n_att, b_att, r_att;
+           p_att[N_SIDES], n_att, b_att, r_att, att_area, passer_area;
   phash_data_t phash_data;
 
   phash_data = eval_pawns(pos);
@@ -126,6 +131,10 @@ int eval(position_t *pos)
 
   p_occ = pos->piece_occ[PAWN];
   occ = pos->occ[WHITE] | pos->occ[BLACK];
+  passer_area = phash_data.passer_area;
+
+  for (side = WHITE; side < N_SIDES; side ++)
+    p_att[side] = pawn_attacks(p_occ & pos->occ[side], side);
 
   for (side = WHITE; side < N_SIDES; side ++)
   {
@@ -137,11 +146,13 @@ int eval(position_t *pos)
     occ_o = pos->occ[side ^ 1];
     p_occ_f = p_occ & occ_f;
     p_occ_o = p_occ & occ_o;
-    n_occ = ~(p_occ_f | pawn_attacks(p_occ_o, side ^ 1));
+    n_occ = ~(p_occ_f | p_att[side ^ 1]);
 
     n_att = knight_attack(occ, k_sq);
     b_att = bishop_attack(occ, k_sq);
     r_att = rook_attack(occ, k_sq);
+
+    att_area = (p_att[side] | _b_piece_area[KING][pos->k_sq[side]]) & n_occ;
 
     #define _score_rook_open_files                                             \
       b = _b_file[_file(sq)];                                                  \
@@ -153,15 +164,12 @@ int eval(position_t *pos)
       _loop(b0)                                                                \
       {                                                                        \
         sq = _bsf(b0);                                                         \
-        b = method(occ, sq) & n_occ;                                           \
+        att_area |= b = method(occ, sq) & n_occ;                               \
                                                                                \
         /* mobility */                                                         \
         pcnt = _popcnt(b);                                                     \
         score_mid += pcnt << m_shift_mid[piece];                               \
         score_end += pcnt << m_shift_end[piece];                               \
-                                                                               \
-        /* threats */                                                          \
-        threat_score += _popcnt(b & occ_o);                                    \
                                                                                \
         /* king safety */                                                      \
         b &= k_zone | att;                                                     \
@@ -180,11 +188,14 @@ int eval(position_t *pos)
     b_att |= r_att;
     _score_piece(QUEEN, queen_attack, b_att,);
 
-    // threats
-    score_end += threat_score << THREAT_SHIFT;
-
     // scale king safety
     score_mid += k_score * k_cnt_mul[_min(k_cnt, K_CNT_LIMIT - 1)];
+
+    // passer protection/attacks
+    score_end += _popcnt(att_area & passer_area) << PASSER_SHIFT;
+
+    // threats
+    score_end += _popcnt(att_area & occ_o) << THREAT_SHIFT;
 
     // bishop pair bonus
     if (_popcnt(pos->piece_occ[BISHOP] & occ_f) >= 2)

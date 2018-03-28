@@ -26,12 +26,13 @@ typedef union {
   struct {
     int16_t score_mid;
     int16_t score_end;
+    uint64_t passer_area;
   };
-  uint32_t raw;
+  uint64_t raw[2];
 } phash_data_t;
 
 int get_phash_data(position_t *, phash_data_t *);
-phash_data_t set_phash_data(position_t *, int, int);
+phash_data_t set_phash_data(position_t *, uint64_t, int, int);
 void init_phash();
 
 #endif
