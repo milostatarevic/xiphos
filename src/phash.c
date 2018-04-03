@@ -43,13 +43,13 @@ int get_phash_data(position_t *pos, phash_data_t *phash_data)
   return (pos->phash_key ^ phash_item->mask) == xor_data(phash_data);
 }
 
-phash_data_t set_phash_data(position_t *pos, uint64_t passer_area,
+phash_data_t set_phash_data(position_t *pos, uint64_t pushed_passers,
                             int score_mid, int score_end)
 {
   phash_item_t *phash_item;
   phash_data_t phash_data;
 
-  phash_data.passer_area = passer_area;
+  phash_data.pushed_passers = pushed_passers;
   phash_data.score_mid = score_mid;
   phash_data.score_end = score_end;
 

@@ -26,7 +26,7 @@ typedef union {
   struct {
     int16_t score_mid;
     int16_t score_end;
-    uint64_t passer_area;
+    uint64_t pushed_passers;
   };
   uint64_t raw[2];
 } phash_data_t;

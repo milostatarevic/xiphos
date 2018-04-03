@@ -22,11 +22,12 @@
 #include "phash.h"
 #include "position.h"
 
-#define BAD_PAWNS_SHIFT           4
-#define CHECK_SHIFT               2
-#define PASSER_SHIFT              4
-#define THREAT_SHIFT              4
 #define KING_PAWNS_SHIFT          3
+#define BAD_PAWN_PENALTY          16
+
+#define CHECK_SHIFT               2
+#define PUSHED_PASSERS_SHIFT      4
+#define THREAT_SHIFT              4
 #define K_CNT_LIMIT               8
 
 #define BISHOP_PAIR_MID           40
@@ -58,16 +59,16 @@ void init_distance()
 
 phash_data_t eval_pawns(position_t *pos)
 {
-  int m, r, side, sq, ssq, k_sq_f, k_sq_o, passers_score, bad_pawns, distance_score;
-  uint64_t b, passer_area, p_occ, p_occ_f, p_occ_o, p_occ_x;
+  int m, r, side, sq, ssq, k_sq_f, k_sq_o, score_mid, score_end;
+  uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o, p_occ_x;
   phash_data_t phash_data;
 
   if (get_phash_data(pos, &phash_data))
     return phash_data;
 
-  passer_area = 0;
+  pushed_passers = 0;
   p_occ = pos->piece_occ[PAWN];
-  passers_score = bad_pawns = distance_score = 0;
+  score_mid = score_end = 0;
 
   for (side = WHITE; side < N_SIDES; side ++)
   {
@@ -87,42 +88,42 @@ phash_data_t eval_pawns(position_t *pos)
 
       // distance bonus / passers
       if (_b_passer_area[side][sq] & p_occ_o)
-      {
-        distance_score += distance[ssq][k_sq_o] * r -
-                          distance[ssq][k_sq_f] * (r - 1);
-      }
+        score_end += distance[ssq][k_sq_o] * r - distance[ssq][k_sq_f] * (r - 1);
       else
       {
-        passers_score += passer_bonus[r];
-        distance_score += (distance[ssq][k_sq_o] << r) -
-                          (distance[ssq][k_sq_f] << (r - 1));
-        if (r >= 4)
-          passer_area |= _b(sq) | _b(ssq);
+        pushed_passers |= _b(ssq);
+        score_mid += passer_bonus[r];
+        score_end += passer_bonus[r] + (distance[ssq][k_sq_o] << r) -
+                                       (distance[ssq][k_sq_f] << (r - 1));
       }
 
       // doubled / isolated pawns
       p_occ_x = p_occ_f ^ _b(sq);
       if ((_b_doubled_pawn_area[side][sq] & p_occ_x) ||
           !(_b_isolated_pawn_area[_file(sq)] & p_occ_x))
-        bad_pawns ++;
+      {
+        score_mid -= BAD_PAWN_PENALTY;
+        score_end -= BAD_PAWN_PENALTY;
+      }
     }
 
-    bad_pawns = -bad_pawns;
-    passers_score = -passers_score;
-    distance_score = -distance_score;
+    // pawns in the king zone
+    score_mid += _popcnt(_b_king_zone[k_sq_f] & p_occ_f) << KING_PAWNS_SHIFT;
+
+    score_mid = -score_mid;
+    score_end = -score_end;
   }
 
-  bad_pawns <<= BAD_PAWNS_SHIFT;
-  return set_phash_data(pos, passer_area,
-                        passers_score - bad_pawns,
-                        passers_score - bad_pawns + distance_score);
+  return set_phash_data(pos, pushed_passers, score_mid, score_end);
 }
 
 int eval(position_t *pos)
 {
-  int side, score_mid, score_end, k_score, threat_score, k_cnt, pcnt, k_sq, sq;
+  int side, score_mid, score_end, pcnt, k_sq, sq,
+      k_score[N_SIDES], k_cnt[N_SIDES];
   uint64_t b, b0, k_zone, occ, occ_f, occ_o, n_occ, p_occ, p_occ_f, p_occ_o,
-           p_att[N_SIDES], n_att, b_att, r_att, att_area, passer_area;
+           n_att, b_att, r_att, pushed_passers,
+           p_att[N_SIDES], att_area[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
 
   phash_data = eval_pawns(pos);
@@ -131,14 +132,13 @@ int eval(position_t *pos)
 
   p_occ = pos->piece_occ[PAWN];
   occ = pos->occ[WHITE] | pos->occ[BLACK];
-  passer_area = phash_data.passer_area;
+  pushed_passers = phash_data.pushed_passers;
 
   for (side = WHITE; side < N_SIDES; side ++)
     p_att[side] = pawn_attacks(p_occ & pos->occ[side], side);
 
   for (side = WHITE; side < N_SIDES; side ++)
   {
-    k_score = k_cnt = threat_score = 0;
     k_sq = pos->k_sq[side ^ 1];
     k_zone = _b_king_zone[k_sq];
 
@@ -152,7 +152,9 @@ int eval(position_t *pos)
     b_att = bishop_attack(occ, k_sq);
     r_att = rook_attack(occ, k_sq);
 
-    att_area = (p_att[side] | _b_piece_area[KING][pos->k_sq[side]]) & n_occ;
+    checks[side] = 0;
+    att_area[side] = p_att[side] | _b_piece_area[KING][pos->k_sq[side]];
+    k_score[side] = k_cnt[side] = 0;
 
     #define _score_rook_open_files                                             \
       b = _b_file[_file(sq)];                                                  \
@@ -164,7 +166,8 @@ int eval(position_t *pos)
       _loop(b0)                                                                \
       {                                                                        \
         sq = _bsf(b0);                                                         \
-        att_area |= b = method(occ, sq) & n_occ;                               \
+        att_area[side] |= b = method(occ, sq);                                 \
+        b &= n_occ;                                                            \
                                                                                \
         /* mobility */                                                         \
         pcnt = _popcnt(b);                                                     \
@@ -175,8 +178,11 @@ int eval(position_t *pos)
         b &= k_zone | att;                                                     \
         if (b)                                                                 \
         {                                                                      \
-          k_cnt ++;                                                            \
-          k_score += _popcnt(b & k_zone) + (_popcnt(b & att) << CHECK_SHIFT);  \
+          k_cnt[side] ++;                                                      \
+          k_score[side] += _popcnt(b & k_zone);                                \
+                                                                               \
+          checks[side] |= b &= att;                                            \
+          k_score[side] += _popcnt(b) << CHECK_SHIFT;                          \
         }                                                                      \
         additional_computation                                                 \
       }
@@ -188,14 +194,11 @@ int eval(position_t *pos)
     b_att |= r_att;
     _score_piece(QUEEN, queen_attack, b_att,);
 
-    // scale king safety
-    score_mid += k_score * k_cnt_mul[_min(k_cnt, K_CNT_LIMIT - 1)];
-
     // passer protection/attacks
-    score_end += _popcnt(att_area & passer_area) << PASSER_SHIFT;
+    score_end += _popcnt(att_area[side] & pushed_passers) << PUSHED_PASSERS_SHIFT;
 
     // threats
-    score_end += _popcnt(att_area & occ_o) << THREAT_SHIFT;
+    score_end += _popcnt(att_area[side] & occ_o & n_occ) << THREAT_SHIFT;
 
     // bishop pair bonus
     if (_popcnt(pos->piece_occ[BISHOP] & occ_f) >= 2)
@@ -204,14 +207,26 @@ int eval(position_t *pos)
       score_end += BISHOP_PAIR_END;
     }
 
-    // pawns in the king zone
-    score_mid -= _popcnt(k_zone & p_occ_o) << KING_PAWNS_SHIFT;
+    score_mid = -score_mid;
+    score_end = -score_end;
+  }
 
-    if (side == WHITE || pos->side == WHITE)
-    {
-      score_mid = -score_mid;
-      score_end = -score_end;
-    }
+  // use precalculated attacks (a separate loop is required)
+  for (side = WHITE; side < N_SIDES; side ++)
+  {
+    // bonus for safe checks
+    if (checks[side] & ~att_area[side ^ 1])
+      k_cnt[side] ++;
+
+    // scale king safety
+    score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
+    score_mid = -score_mid;
+  }
+
+  if (pos->side == BLACK)
+  {
+    score_mid = -score_mid;
+    score_end = -score_end;
   }
 
   if (pos->phase >= TOTAL_PHASE)
