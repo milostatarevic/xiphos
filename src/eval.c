@@ -25,7 +25,7 @@
 #define KING_PAWNS_SHIFT          3
 #define BAD_PAWN_PENALTY          16
 
-#define CHECK_SHIFT               2
+#define SAFE_CHECK_SHIFT          3
 #define PUSHED_PASSERS_SHIFT      4
 #define THREAT_SHIFT              4
 #define K_CNT_LIMIT               8
@@ -39,7 +39,7 @@
 const int piece_value[N_PIECES] = { 100, 310, 330, 500, 950, 20000 };
 const int piece_phase[N_PIECES] = { 0, 6, 6, 13, 28, 0 };
 
-const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 6, 16, 18, 20, 21, 22 };
+const int k_cnt_mul[K_CNT_LIMIT] = { 0, 2, 10, 16, 18, 20, 21, 22 };
 
 const int m_shift_mid[N_PIECES] = { 0, 3, 3, 2, 1, 0 };
 const int m_shift_end[N_PIECES] = { 0, 2, 1, 3, 3, 0 };
@@ -163,28 +163,32 @@ int eval(position_t *pos)
 
     #define _score_piece(piece, method, att, additional_computation)           \
       b0 = pos->piece_occ[piece] & occ_f;                                      \
-      _loop(b0)                                                                \
+      if (b0)                                                                  \
       {                                                                        \
-        sq = _bsf(b0);                                                         \
-        att_area[side] |= b = method(occ, sq);                                 \
-        b &= n_occ;                                                            \
+        pcnt = 0;                                                              \
+        _loop(b0)                                                              \
+        {                                                                      \
+          sq = _bsf(b0);                                                       \
+          att_area[side] |= b = method(occ, sq);                               \
                                                                                \
+          b &= n_occ;                                                          \
+          pcnt += _popcnt(b);                                                  \
+                                                                               \
+          /* king safety */                                                    \
+          b &= k_zone | att;                                                   \
+          if (b)                                                               \
+          {                                                                    \
+            k_cnt[side] ++;                                                    \
+            k_score[side] += _popcnt(b & k_zone);                              \
+                                                                               \
+            checks[side] |= b &= att;                                          \
+            k_score[side] += _popcnt(b);                                       \
+          }                                                                    \
+          additional_computation                                               \
+        }                                                                      \
         /* mobility */                                                         \
-        pcnt = _popcnt(b);                                                     \
         score_mid += pcnt << m_shift_mid[piece];                               \
         score_end += pcnt << m_shift_end[piece];                               \
-                                                                               \
-        /* king safety */                                                      \
-        b &= k_zone | att;                                                     \
-        if (b)                                                                 \
-        {                                                                      \
-          k_cnt[side] ++;                                                      \
-          k_score[side] += _popcnt(b & k_zone);                                \
-                                                                               \
-          checks[side] |= b &= att;                                            \
-          k_score[side] += _popcnt(b) << CHECK_SHIFT;                          \
-        }                                                                      \
-        additional_computation                                                 \
       }
 
     _score_piece(KNIGHT, knight_attack, n_att,);
@@ -215,8 +219,11 @@ int eval(position_t *pos)
   for (side = WHITE; side < N_SIDES; side ++)
   {
     // bonus for safe checks
-    if (checks[side] & ~att_area[side ^ 1])
+    if ((b = checks[side] & ~att_area[side ^ 1]))
+    {
       k_cnt[side] ++;
+      k_score[side] += _popcnt(b) << SAFE_CHECK_SHIFT;
+    }
 
     // scale king safety
     score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
