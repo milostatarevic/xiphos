@@ -28,6 +28,7 @@
 #define SAFE_CHECK_SHIFT          3
 #define PUSHED_PASSERS_SHIFT      4
 #define THREAT_SHIFT              4
+#define PAWN_THREAT_SHIFT         6
 #define K_CNT_LIMIT               8
 
 #define BISHOP_PAIR_MID           40
@@ -203,6 +204,13 @@ int eval(position_t *pos)
 
     // threats
     score_end += _popcnt(att_area[side] & occ_o & n_occ) << THREAT_SHIFT;
+
+    // threats by protected pawns
+    pcnt = _popcnt(
+      pawn_attacks(att_area[side] & p_occ_f, side) & occ_o & ~p_occ_o
+    ) << PAWN_THREAT_SHIFT;
+    score_mid += pcnt;
+    score_end += pcnt;
 
     // bishop pair bonus
     if (_popcnt(pos->piece_occ[BISHOP] & occ_f) >= 2)
