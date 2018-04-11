@@ -36,6 +36,7 @@
 #define IID_DEPTH                     5
 #define LMP_DEPTH                     4
 #define LMR_DEPTH                     3
+#define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
 #define START_THREADS_DEPTH           4
 #define START_ASPIRATION_DEPTH        4
@@ -168,10 +169,10 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
 }
 
 int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
-        int depth, int ply, int is_null)
+        int depth, int ply, int use_pruning, move_t skip_move)
 {
-  int i, searched_cnt, best_score, hash_bound, score, hash_score, static_score,
-      lmp_started, reduction, h_score, prunable;
+  int i, searched_cnt, best_score, use_hash, hash_bound, score, hash_score,
+      static_score, beta_cut, lmp_started, new_depth, reduction, h_score;
   move_t move, best_move, hash_move;
   uint64_t pinned, b_att, r_att;
   hash_data_t hash_data;
@@ -192,62 +193,70 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   if (!root_node && draw(sd, 1)) return 0;
 
   // load hash data
-  hash_move = hash_score = 0;
+  use_hash = !skip_move;
+  hash_move = hash_data.raw = 0;
+  hash_score = -MATE_SCORE;
   hash_bound = HASH_BOUND_NOT_USED;
-  hash_data = get_hash_data(sd);
 
-  if (hash_data.raw)
+  if (use_hash)
   {
-    hash_move = hash_data.move;
-    hash_bound = hash_data.bound;
-    hash_score = adjust_hash_score(_m_score(hash_move), ply);
+    hash_data = get_hash_data(sd);
+    if (hash_data.raw)
+    {
+      hash_move = hash_data.move;
+      hash_bound = hash_data.bound;
+      hash_score = adjust_hash_score(_m_score(hash_move), ply);
 
-    if(!pv_node && hash_data.depth >= depth)
-      if ((hash_bound == HASH_LOWER_BOUND && hash_score >= beta) ||
-          (hash_bound == HASH_UPPER_BOUND && hash_score <= alpha) ||
-          (hash_bound == HASH_EXACT))
-        return hash_score;
+      if(!pv_node && hash_data.depth >= depth)
+        if ((hash_bound == HASH_LOWER_BOUND && hash_score >= beta) ||
+            (hash_bound == HASH_UPPER_BOUND && hash_score <= alpha) ||
+            (hash_bound == HASH_EXACT))
+          return hash_score;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
 
   // evaluate
-  if (hash_data.raw && hash_bound == HASH_EXACT)
-    static_score = hash_score;
+  if (pos->in_check)
+    static_score = -MATE_SCORE + ply;
   else
   {
-    static_score = eval(pos);
-    if (hash_data.raw)
+    if (hash_data.raw && hash_bound == HASH_EXACT)
+      static_score = hash_score;
+    else
     {
-      if ((hash_score < static_score && hash_bound == HASH_UPPER_BOUND) ||
-          (hash_score > static_score && hash_bound == HASH_LOWER_BOUND))
-        static_score = hash_score;
+      static_score = eval(pos);
+      if (hash_data.raw)
+      {
+        if ((hash_score < static_score && hash_bound == HASH_UPPER_BOUND) ||
+            (hash_score > static_score && hash_bound == HASH_LOWER_BOUND))
+          static_score = hash_score;
+      }
     }
   }
 
-  // IID
-  if (!pos->in_check && pv_node && !_is_m(hash_move) && depth >= IID_DEPTH)
-  {
-    pvs(sd, 0, 1, alpha, beta, depth - 2, ply, 1);
-    hash_data = get_hash_data(sd);
-    if (hash_data.raw)
-      hash_move = hash_data.move;
-  }
-
-  prunable = !pos->in_check && !pv_node;
   pinned = b_att = r_att = 0;
-
-  if (prunable)
+  if (use_pruning && !pos->in_check && !_is_mate_score(beta))
   {
-    // razoring
-    if (depth <= RAZOR_DEPTH && static_score + RAZOR_MARGIN < beta)
+    // IID
+    if (depth >= IID_DEPTH && !_is_m(hash_move) && pv_node)
     {
-      score = qsearch(sd, alpha, beta, 0, ply);
-      if (score < beta) return score;
+      pvs(sd, 0, 1, alpha, beta, depth - 2, ply, 0, 0);
+      hash_data = get_hash_data(sd);
+      if (hash_data.raw)
+        hash_move = hash_data.move;
     }
 
-    if(!_is_mate_score(beta))
+    if (!pv_node)
     {
+      // razoring
+      if (depth <= RAZOR_DEPTH && static_score + RAZOR_MARGIN < beta)
+      {
+        score = qsearch(sd, alpha, beta, 0, ply);
+        if (score < beta) return score;
+      }
+
       if (non_pawn_material(pos))
       {
         // futility
@@ -255,11 +264,11 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           return static_score;
 
         // null move
-        if (depth >= 2 && static_score >= beta && !is_null)
+        if (depth >= 2 && static_score >= beta)
         {
           make_null_move(sd);
           score = -pvs(sd, 0, 0, -beta, -beta + 1,
-                       depth - _null_move_reduction(depth) - 1, ply + 1, 1);
+                       depth - _null_move_reduction(depth) - 1, ply + 1, 0, 0);
           undo_move(sd);
 
           if (shared_search_info.done) return 0;
@@ -271,7 +280,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       // ProbCut
       if (depth >= PROBCUT_DEPTH)
       {
-        int beta_cut = beta + PROBCUT_MARGIN;
+        beta_cut = beta + PROBCUT_MARGIN;
         init_move_list(&move_list, QSEARCH, pos->in_check);
 
         while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0, 0)))
@@ -284,18 +293,18 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
           make_move(sd, move);
           score = -pvs(sd, 0, 0, -beta_cut, -beta_cut + 1,
-                       depth - PROBCUT_DEPTH + 1, ply + 1, 0);
+                       depth - PROBCUT_DEPTH + 1, ply + 1, 1, 0);
           undo_move(sd);
 
           if (score >= beta_cut)
             return score;
         }
       }
-    }
 
-    // init lookup for possible checks
-    pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
-                        &pinned, &b_att, &r_att);
+      // init lookup for possible checks
+      pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
+                          &pinned, &b_att, &r_att);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -310,9 +319,12 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
   while ((move = next_move(&move_list, sd, hash_move, depth, ply, lmp_started, root_node)))
   {
+    if (_m_eq(move, skip_move))
+      continue;
+
     // LMP
-    if (depth <= LMP_DEPTH && prunable && _m_is_quiet(move) &&
-        searched_cnt >= _lmp_count(depth) &&
+    if (depth <= LMP_DEPTH && !pos->in_check && !pv_node &&
+        _m_is_quiet(move) && searched_cnt >= _lmp_count(depth) &&
         !gives_check(pos, move, pinned, b_att, r_att))
     {
       lmp_started = 1;
@@ -322,13 +334,26 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     if (!legal_move(pos, move))
       continue;
 
+    new_depth = depth - 1;
+
+    // singular extensions
+    if (depth >= SE_DEPTH && !skip_move && _m_eq(move, hash_move) &&
+        !root_node && !_is_mate_score(hash_score) &&
+        hash_data.bound == HASH_LOWER_BOUND && hash_data.depth >= depth - 3)
+    {
+      beta_cut = hash_score - depth;
+      score = pvs(sd, 0, 0, beta_cut - 1, beta_cut, depth >> 1, ply, 0, move);
+      if (score < beta_cut)
+        new_depth ++;
+    }
+
     // make move
     make_move(sd, move);
     searched_cnt ++;
 
     // search
     if (searched_cnt == 1)
-      score = -pvs(sd, 0, pv_node, -beta, -alpha, depth - 1, ply + 1, 0);
+      score = -pvs(sd, 0, pv_node, -beta, -alpha, new_depth, ply + 1, 1, 0);
     else
     {
       // LMR
@@ -336,12 +361,12 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       if (depth >= LMR_DEPTH && !pos->in_check && _m_is_quiet(move))
         reduction = lmr[depth][searched_cnt];
 
-      score = -pvs(sd, 0, 0, -alpha - 1, -alpha, depth - reduction - 1, ply + 1, 0);
+      score = -pvs(sd, 0, 0, -alpha - 1, -alpha, new_depth - reduction, ply + 1, 1, 0);
       if (reduction && score > alpha)
-        score = -pvs(sd, 0, 0, -alpha - 1, -alpha, depth - 1, ply + 1, 0);
+        score = -pvs(sd, 0, 0, -alpha - 1, -alpha, new_depth, ply + 1, 1, 0);
 
       if (score > alpha && score < beta)
-        score = -pvs(sd, 0, 1, -beta, -alpha, depth - 1, ply + 1, 0);
+        score = -pvs(sd, 0, 1, -beta, -alpha, new_depth, ply + 1, 1, 0);
     }
     undo_move(sd);
 
@@ -395,10 +420,11 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
   // mate/stalemate
   if (searched_cnt == 0)
-    return pos->in_check ? (-MATE_SCORE + ply) : 0;
+    return pos->in_check || skip_move ? (-MATE_SCORE + ply) : 0;
 
   // save hash item
-  set_hash_data(sd, ply, best_move, best_score, depth, hash_bound);
+  if (use_hash)
+    set_hash_data(sd, ply, best_move, best_score, depth, hash_bound);
 
   return best_score;
 }
@@ -439,7 +465,7 @@ void *search_thread(void *thread_data)
 
     while (1)
     {
-      score = pvs(sd, 1, 1, alpha, beta, depth, 0, 0);
+      score = pvs(sd, 1, 1, alpha, beta, depth, 0, 0, 0);
       if (shared_search_info.done) break;
 
       delta <<= 1;
