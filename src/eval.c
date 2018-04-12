@@ -122,7 +122,7 @@ int eval(position_t *pos)
 {
   int side, score_mid, score_end, pcnt, k_sq, sq,
       k_score[N_SIDES], k_cnt[N_SIDES];
-  uint64_t b, b0, k_zone, occ, occ_f, occ_o, n_occ, p_occ, p_occ_f, p_occ_o,
+  uint64_t b, b0, k_zone, occ, occ_f, occ_o, occ_x, n_occ, p_occ, p_occ_f, p_occ_o,
            n_att, b_att, r_att, pushed_passers,
            p_att[N_SIDES], att_area[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
@@ -170,7 +170,7 @@ int eval(position_t *pos)
         _loop(b0)                                                              \
         {                                                                      \
           sq = _bsf(b0);                                                       \
-          att_area[side] |= b = method(occ, sq);                               \
+          att_area[side] |= b = method(occ_x, sq);                             \
                                                                                \
           b &= n_occ;                                                          \
           pcnt += _popcnt(b);                                                  \
@@ -192,12 +192,15 @@ int eval(position_t *pos)
         score_end += pcnt << m_shift_end[piece];                               \
       }
 
+    occ_x = occ ^ pos->piece_occ[QUEEN];
     _score_piece(KNIGHT, knight_attack, n_att,);
     _score_piece(BISHOP, bishop_attack, b_att,);
-    _score_piece(ROOK, rook_attack, r_att, _score_rook_open_files);
 
     b_att |= r_att;
     _score_piece(QUEEN, queen_attack, b_att,);
+
+    occ_x ^= pos->piece_occ[ROOK] & occ_f & ~(side == WHITE ? _B_RANK_1 : _B_RANK_8);
+    _score_piece(ROOK, rook_attack, r_att, _score_rook_open_files);
 
     // passer protection/attacks
     score_end += _popcnt(att_area[side] & pushed_passers) << PUSHED_PASSERS_SHIFT;
