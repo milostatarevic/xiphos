@@ -19,7 +19,9 @@
 #ifndef POSITION_H
 #define POSITION_H
 
-#include <xmmintrin.h>
+#ifndef _NOPOPCNT
+  #include <xmmintrin.h>
+#endif
 #include "bitboard.h"
 #include "game.h"
 #include "move.h"
