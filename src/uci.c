@@ -148,8 +148,7 @@ void read_fen(search_data_t *sd, char *buf, int full_reset)
   if (moves_buf)
     while ((moves_buf = strchr(moves_buf, ' ')))
     {
-      moves_buf ++;
-      if (moves_buf[0] == ' ') continue;
+      while (*moves_buf == ' ') moves_buf++;
       make_move_rev(sd, str_to_m(moves_buf));
     }
 }
@@ -157,11 +156,14 @@ void read_fen(search_data_t *sd, char *buf, int full_reset)
 void uci_position_startpos(search_data_t *sd, char *buf)
 {
   read_fen(sd, initial_fen, 0);
-  if(strstr(buf, "moves") == NULL) return;
+  buf = strstr(buf, "moves");
+  if(buf == NULL) return;
 
-  buf += sizeof("moves") - 1;
   while ((buf = strchr(buf, ' ')))
-    make_move_rev(sd, str_to_m(++buf));
+  {
+    while (*buf == ' ') buf++;
+    make_move_rev(sd, str_to_m(buf));
+  }
 }
 
 void uci_go(search_data_t *sd, search_data_t *threads_search_data, char *buf)
