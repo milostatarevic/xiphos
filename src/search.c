@@ -236,18 +236,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     }
   }
 
-  pinned = b_att = r_att = 0;
   if (use_pruning && !pos->in_check && !_is_mate_score(beta))
   {
-    // IID
-    if (depth >= IID_DEPTH && !_is_m(hash_move) && pv_node)
-    {
-      pvs(sd, 0, 1, alpha, beta, depth - 2, ply, 0, 0);
-      hash_data = get_hash_data(sd);
-      if (hash_data.raw)
-        hash_move = hash_data.move;
-    }
-
     if (!pv_node)
     {
       // razoring
@@ -300,10 +290,15 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
             return score;
         }
       }
+    }
 
-      // init lookup for possible checks
-      pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
-                          &pinned, &b_att, &r_att);
+    // IID
+    if (depth >= IID_DEPTH && pv_node && !_is_m(hash_move))
+    {
+      pvs(sd, 0, 1, alpha, beta, depth - 2, ply, 0, 0);
+      hash_data = get_hash_data(sd);
+      if (hash_data.raw)
+        hash_move = hash_data.move;
     }
   }
 
@@ -316,6 +311,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   best_score = -MATE_SCORE + ply;
   best_move = hash_move;
   searched_cnt = lmp_started = 0;
+  pinned = b_att = r_att = 0;
 
   while ((move = next_move(&move_list, sd, hash_move, depth, ply, lmp_started, root_node)))
   {
@@ -324,11 +320,16 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
     // LMP
     if (depth <= LMP_DEPTH && !pos->in_check && !pv_node &&
-        _m_is_quiet(move) && searched_cnt >= _lmp_count(depth) &&
-        !gives_check(pos, move, pinned, b_att, r_att))
+        _m_is_quiet(move) && searched_cnt >= _lmp_count(depth))
     {
+      // init lookup for gives_check
+      if (!lmp_started)
+        pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
+                            &pinned, &b_att, &r_att);
+
       lmp_started = 1;
-      continue;
+      if (!gives_check(pos, move, pinned, b_att, r_att))
+        continue;
     }
 
     if (!legal_move(pos, move))
