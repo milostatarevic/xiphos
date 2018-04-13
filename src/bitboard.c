@@ -46,6 +46,16 @@ uint64_t _b_piece_area[P_LIMIT][BOARD_SIZE],
          _b_king_zone[BOARD_SIZE],
          _b_line[BOARD_SIZE][BOARD_SIZE];
 
+#ifdef _NOPOPCNT
+  uint8_t popcnt_lookup[1 << 16];
+  void init_popcnt_lookup()
+  {
+    int i;
+    for(i = 0; i < 1 << 16; i ++)
+      popcnt_lookup[i] = __builtin_popcount(i);
+  }
+#endif
+
 uint64_t _piece_attack(uint64_t occ, int piece, int sq)
 {
   int wp, vr, vf;
@@ -255,6 +265,10 @@ void init_attack_bitboards()
 
 void init_bitboards()
 {
+#ifdef _NOPOPCNT
+  init_popcnt_lookup();
+#endif
+
   init_piece_area();
   init_attack_bitboards();
   init_pawn_boards();

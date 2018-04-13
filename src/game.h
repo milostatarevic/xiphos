@@ -21,10 +21,13 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.1.10"
+#define VERSION                      "Xiphos 0.1.11"
 #define AUTHOR                       "Milos Tatarevic"
+
 #ifdef _BMI2
   #define ARCH                       "BMI2"
+#elif defined(_NOPOPCNT)
+  #define ARCH                       "NO-POPCNT"
 #else
   #define ARCH                       "SSE"
 #endif

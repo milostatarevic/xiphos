@@ -61,16 +61,28 @@ extern uint64_t _b_piece_area[P_LIMIT][BOARD_SIZE],
 
 static inline int _bsf(uint64_t b)
 {
+#ifdef _NOPOPCNT
+  return __builtin_ctzll(b);
+#else
   uint64_t r;
   asm("bsfq %1, %0" : "=r" (r) : "r" (b));
   return r;
+#endif
 }
 
 static inline int _popcnt(uint64_t b)
 {
+#if defined(_NOPOPCNT)
+  extern uint8_t popcnt_lookup[];
+  return popcnt_lookup[b & 0xffff] +
+         popcnt_lookup[(b >> 16) & 0xffff] +
+         popcnt_lookup[(b >> 32) & 0xffff] +
+         popcnt_lookup[b >> 48];
+#else
   uint64_t r;
   asm("popcntq %1, %0" : "=r" (r) : "r" (b));
   return r;
+#endif
 }
 
 #ifdef _BMI2

@@ -57,6 +57,9 @@ void reevaluate_position(position_t *);
 
 static inline void position_cpy(position_t *dest, position_t *src)
 {
+#ifdef _NOPOPCNT
+  *dest = *src;
+#else
   register __m128 x0, x1, x2, x3, x4, *s, *d;
 
   s = (__m128 *)src;
@@ -67,6 +70,7 @@ static inline void position_cpy(position_t *dest, position_t *src)
 
   x0 = s[5]; x1 = s[6]; x2 = s[7]; x3 = s[8]; x4 = s[9];
   d[5] = x0; d[6] = x1; d[7] = x2; d[8] = x3; d[9] = x4;
+#endif
 }
 
 static inline void pins_and_attacks_to(
