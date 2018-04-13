@@ -38,10 +38,10 @@ typedef struct {
 } search_data_t;
 
 struct {
-  int max_threads, max_depth, max_time, done, nodes, depth,
+  int max_threads, max_depth, max_time, done, depth,
       search_depth_cnt[MAX_DEPTH];
   move_t best_move;
-  uint64_t time_in_ms;
+  uint64_t nodes, time_in_ms;
   struct {
     int time, inc, movestogo, depth, movetime;
   } go;

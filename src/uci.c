@@ -291,10 +291,11 @@ void uci_info(int depth, int score)
     sprintf(score_string, "cp %d", score);
 
   elapsed_time = time_in_ms() - shared_search_info.time_in_ms;
-  print("info depth %d score %s nodes %"PRIu64" time %d nps %d pv %s\n",
+  print("info depth %d score %s nodes %"PRIu64" time %d nps %d ",
         depth, score_string, shared_search_info.nodes, elapsed_time,
-        1000ULL * shared_search_info.nodes / (elapsed_time + 1),
-        m_to_str(shared_search_info.best_move));
+        1000ULL * shared_search_info.nodes / (elapsed_time + 1));
+
+  print("pv %s\n", m_to_str(shared_search_info.best_move));
 }
 
 void set_hash_size(search_data_t *sd, int hash_size_in_mb)
