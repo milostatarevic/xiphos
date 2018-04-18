@@ -38,7 +38,6 @@
 #define LMR_DEPTH                     3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
-#define START_THREADS_DEPTH           4
 #define START_ASPIRATION_DEPTH        4
 
 #define RAZOR_MARGIN                  200
@@ -49,6 +48,7 @@
 #define _null_move_reduction(depth)   ((depth) / 4 + 3)
 #define _lmp_count(depth)             (2 + (depth) * 2)
 
+pthread_mutex_t mutex;
 int lmr[MAX_DEPTH][MAX_MOVES];
 
 void init_lmr()
@@ -171,7 +171,7 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
 int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         int depth, int ply, int use_pruning, move_t skip_move)
 {
-  int i, searched_cnt, best_score, use_hash, hash_bound, score, hash_score,
+  int i, searched_cnt, best_score, score, use_hash, hash_bound, hash_score,
       static_score, beta_cut, lmp_started, new_depth, reduction, h_score;
   move_t move, best_move, hash_move;
   uint64_t pinned, b_att, r_att;
@@ -180,7 +180,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   move_list_t move_list;
 
   if (depth <= 0)
-      return qsearch(sd, alpha, beta, 0, ply);
+    return qsearch(sd, alpha, beta, 0, ply);
 
   alpha = _max(alpha, -MATE_SCORE + ply);
   beta = _min(beta, MATE_SCORE - ply + 1);
@@ -380,12 +380,16 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       if (score > alpha)
       {
         best_move = move;
-        if (ply == 0 && shared_search_info.depth <= depth)
+        if (ply == 0)
         {
-          shared_search_info.depth = depth;
-          shared_search_info.best_move = move;
-
-          uci_info(depth, score);
+          pthread_mutex_lock(&mutex);
+          if (shared_search_info.depth <= depth)
+          {
+            shared_search_info.depth = depth;
+            shared_search_info.best_move = move;
+            uci_info(depth, score);
+          }
+          pthread_mutex_unlock(&mutex);
         }
 
         alpha = score;
@@ -432,32 +436,31 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
 void *search_thread(void *thread_data)
 {
-  int depth, start_depth, score, alpha, beta, delta, threads_cnt, threads_max;
+  int depth, search_depth_cnt, score, alpha, beta, delta,
+      threads_cnt, threads_max;
   search_data_t *sd;
 
   sd = (search_data_t *)thread_data;
-
-  // start additional threads with delay
-  start_depth = (sd->tid == 0) ? 1 : START_THREADS_DEPTH;
-  if (sd->tid)
-  {
-    while(!shared_search_info.search_depth_cnt[start_depth] && !shared_search_info.done)
-    {
-      sleep_ms(1);
-      continue;
-    }
-  }
+  sd->nodes = 0;
 
   score = 0;
   threads_cnt = threads_max = (shared_search_info.max_threads + 1) >> 1;
-  for (depth = start_depth; depth <= shared_search_info.max_depth; depth ++)
+  for (depth = 1; depth <= shared_search_info.max_depth; depth ++)
   {
-    if (shared_search_info.search_depth_cnt[depth] >= threads_cnt)
+    pthread_mutex_lock(&mutex);
+    search_depth_cnt = shared_search_info.search_depth_cnt[depth];
+    pthread_mutex_unlock(&mutex);
+
+    if (search_depth_cnt >= threads_cnt)
     {
       threads_cnt = _max(threads_cnt >> 1, 1);
       continue;
     }
+
+    pthread_mutex_lock(&mutex);
     shared_search_info.search_depth_cnt[depth] ++;
+    pthread_mutex_unlock(&mutex);
+
     threads_cnt = threads_max;
 
     delta = (depth >= START_ASPIRATION_DEPTH) ? INIT_ASPIRATION_WINDOW : MATE_SCORE;
@@ -536,6 +539,7 @@ void search(search_data_t *sd, search_data_t *threads_search_data)
   reevaluate_position(sd->pos);
 
   // launch search threads
+  pthread_mutex_init(&mutex, NULL);
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
@@ -547,15 +551,18 @@ void search(search_data_t *sd, search_data_t *threads_search_data)
 
   while (!shared_search_info.done)
   {
+    pthread_mutex_lock(&mutex);
     if (time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.max_time &&
         shared_search_info.depth >= MIN_DEPTH_TO_REACH)
       shared_search_info.done = 1;
+    pthread_mutex_unlock(&mutex);
     sleep_ms(2);
   }
 
   pthread_attr_destroy(&attr);
   for (t = 0; t < shared_search_info.max_threads; t ++)
     pthread_join(threads[t], NULL);
+  pthread_mutex_destroy(&mutex);
 
   print("bestmove %s\n", m_to_str(shared_search_info.best_move));
 }

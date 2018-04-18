@@ -52,6 +52,7 @@
 #define DEFAULT_MOVES_TO_GO         25
 #define READ_BUFFER_SIZE            65536
 
+search_data_t *threads_search_data;
 char initial_fen[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
 
 void set_piece(position_t *pos, int piece, int sq)
@@ -166,7 +167,7 @@ void uci_position_startpos(search_data_t *sd, char *buf)
   }
 }
 
-void uci_go(search_data_t *sd, search_data_t *threads_search_data, char *buf)
+void uci_go(search_data_t *sd, char *buf)
 {
   int max_threads, max_time, max_time_allowed, moves_to_go;
   char *t;
@@ -281,8 +282,9 @@ void uci_perft(search_data_t *sd, char *buf)
 
 void uci_info(int depth, int score)
 {
-  int elapsed_time;
+  int i, elapsed_time;
   char score_string[64];
+  uint64_t nodes;
 
   if (_is_mate_score(score))
     sprintf(score_string, "mate %d",
@@ -290,10 +292,14 @@ void uci_info(int depth, int score)
   else
     sprintf(score_string, "cp %d", score);
 
+  nodes = 0;
+  for (i = 0; i < shared_search_info.max_threads; i ++)
+    nodes += threads_search_data[i].nodes;
+
   elapsed_time = time_in_ms() - shared_search_info.time_in_ms;
   print("info depth %d score %s nodes %"PRIu64" time %d nps %d ",
-        depth, score_string, shared_search_info.nodes, elapsed_time,
-        1000ULL * shared_search_info.nodes / (elapsed_time + 1));
+        depth, score_string, nodes, elapsed_time,
+        1000ULL * nodes / (elapsed_time + 1));
 
   print("pv %s\n", m_to_str(shared_search_info.best_move));
 }
@@ -310,12 +316,12 @@ void set_hash_size(search_data_t *sd, int hash_size_in_mb)
   print("hash=%dMB\n", allocated_memory >> 20);
 }
 
-void set_max_threads(search_data_t **threads_search_data, int thread_cnt)
+void set_max_threads(int thread_cnt)
 {
   shared_search_info.max_threads = _max(_min(thread_cnt, MAX_THREADS), 1);
-  *threads_search_data =
+  threads_search_data =
     (search_data_t *) realloc(
-      *threads_search_data, shared_search_info.max_threads * sizeof(search_data_t)
+      threads_search_data, shared_search_info.max_threads * sizeof(search_data_t)
     );
   print("threads=%d\n", shared_search_info.max_threads);
 }
@@ -332,13 +338,13 @@ int _cmd_cmp(char **buf, const char *cmd_str)
 
 void uci()
 {
-  search_data_t sd, *threads_search_data;
+  search_data_t sd;
   char *buf, input_buf[READ_BUFFER_SIZE];
 
   print("%s %s by %s\n", VERSION, ARCH, AUTHOR);
 
   threads_search_data = NULL;
-  set_max_threads(&threads_search_data, DEFAULT_THREADS);
+  set_max_threads(DEFAULT_THREADS);
   set_hash_size(&sd, DEFAULT_HASH_SIZE_IN_MB);
 
   read_fen(&sd, initial_fen, 1);
@@ -382,7 +388,7 @@ void uci()
       uci_position_startpos(&sd, buf);
 
     else if (_cmd_cmp(&buf, CMD_GO))
-      uci_go(&sd, threads_search_data, buf);
+      uci_go(&sd, buf);
 
     else if (_cmd_cmp(&buf, CMD_PERFT))
       uci_perft(&sd, buf);
@@ -397,7 +403,7 @@ void uci()
       set_hash_size(&sd, atoi(buf));
 
     else if (_cmd_cmp(&buf, OPTION_THREADS))
-      set_max_threads(&threads_search_data, atoi(buf));
+      set_max_threads(atoi(buf));
   }
 }
 

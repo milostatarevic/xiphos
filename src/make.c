@@ -102,7 +102,7 @@ void make_move(search_data_t *sd, move_t move)
   position_t *pos;
 
   // we are only counting moves we made
-  shared_search_info.nodes ++;
+  sd->nodes ++;
 
   // migrate from the previous positions
   sd->pos ++;
