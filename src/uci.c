@@ -382,7 +382,7 @@ void uci()
       read_fen(&sd, initial_fen, 1);
 
     else if (_cmd_cmp(&buf, CMD_POSITION_FEN))
-      read_fen(&sd, buf, 1);
+      read_fen(&sd, buf, 0);
 
     else if (_cmd_cmp(&buf, CMD_POSITION_STARTPOS))
       uci_position_startpos(&sd, buf);
