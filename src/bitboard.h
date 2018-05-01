@@ -135,12 +135,28 @@ static inline uint64_t king_attack(uint64_t _occ, int sq)
   return _b_piece_area[KING][sq];
 }
 
-static inline uint64_t pawn_attacks(uint64_t occ, int side)
+static inline uint64_t pawn_attacks(uint64_t p_occ, int side)
 {
   if (side == WHITE)
-    return ((occ >> 7) & ~_B_FILE_A) | ((occ >> 9) & ~_B_FILE_H);
+    return ((p_occ >> 7) & ~_B_FILE_A) | ((p_occ >> 9) & ~_B_FILE_H);
   else
-    return ((occ << 9) & ~_B_FILE_A) | ((occ << 7) & ~_B_FILE_H);
+    return ((p_occ << 9) & ~_B_FILE_A) | ((p_occ << 7) & ~_B_FILE_H);
+}
+
+static inline uint64_t pushed_pawns(uint64_t p_occ, uint64_t n_occ, int side)
+{
+  uint64_t b;
+
+  if (side == WHITE)
+  {
+    b = (p_occ >> 8) & n_occ;
+    return b | ((b >> 8) & n_occ & _B_RANK_4);
+  }
+  else
+  {
+    b = (p_occ << 8) & n_occ;
+    return b | ((b << 8) & n_occ & _B_RANK_5);
+  }
 }
 
 void init_bitboards();

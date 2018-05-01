@@ -385,9 +385,10 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           pthread_mutex_lock(&mutex);
           if (shared_search_info.depth <= depth)
           {
+            shared_search_info.score = score;
             shared_search_info.depth = depth;
             shared_search_info.best_move = move;
-            uci_info(depth, score);
+            uci_info();
           }
           pthread_mutex_unlock(&mutex);
         }
@@ -564,5 +565,6 @@ void search(search_data_t *sd, search_data_t *threads_search_data)
     pthread_join(threads[t], NULL);
   pthread_mutex_destroy(&mutex);
 
+  uci_info();
   print("bestmove %s\n", m_to_str(shared_search_info.best_move));
 }

@@ -280,12 +280,13 @@ void uci_perft(search_data_t *sd, char *buf)
         depth, nodes, time_ms, nodes * 1000 / (time_ms + 1));
 }
 
-void uci_info(int depth, int score)
+void uci_info()
 {
-  int i, elapsed_time;
+  int i, elapsed_time, score;
   char score_string[64];
   uint64_t nodes;
 
+  score = shared_search_info.score;
   if (_is_mate_score(score))
     sprintf(score_string, "mate %d",
             (MATE_SCORE - _abs(score)) / 2 * ((score >= 0) ? 1 : -1));
@@ -297,8 +298,9 @@ void uci_info(int depth, int score)
     nodes += threads_search_data[i].nodes;
 
   elapsed_time = time_in_ms() - shared_search_info.time_in_ms;
+
   print("info depth %d score %s nodes %"PRIu64" time %d nps %d ",
-        depth, score_string, nodes, elapsed_time,
+        shared_search_info.depth, score_string, nodes, elapsed_time,
         1000ULL * nodes / (elapsed_time + 1));
 
   print("pv %s\n", m_to_str(shared_search_info.best_move));
@@ -367,7 +369,7 @@ void uci()
     {
       print("id name %s %s\n", VERSION, ARCH);
       print("id author %s\n", AUTHOR);
-      print("option name Hash type spin default %d min 1 max 4096\n", DEFAULT_HASH_SIZE_IN_MB);
+      print("option name Hash type spin default %d min 1 max 32768\n", DEFAULT_HASH_SIZE_IN_MB);
       print("option name Threads type spin default 1 min 1 max %d\n", MAX_THREADS);
       print("uciok\n");
     }

@@ -29,6 +29,7 @@
 #define PUSHED_PASSERS_SHIFT      4
 #define THREAT_SHIFT              4
 #define PAWN_THREAT_SHIFT         6
+#define PUSHED_PAWN_THREAT_SHIFT  4
 #define K_CNT_LIMIT               8
 
 #define BISHOP_PAIR_MID           40
@@ -122,7 +123,8 @@ int eval(position_t *pos)
 {
   int side, score_mid, score_end, pcnt, k_sq, sq,
       k_score[N_SIDES], k_cnt[N_SIDES];
-  uint64_t b, b0, k_zone, occ, occ_f, occ_o, occ_x, n_occ, p_occ, p_occ_f, p_occ_o,
+  uint64_t b, b0, k_zone, occ, r_occ, occ_f, occ_o, occ_x, n_occ,
+           p_occ, p_occ_f, p_occ_o, occ_o_np,
            n_att, b_att, r_att, pushed_passers,
            p_att[N_SIDES], att_area[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
@@ -133,6 +135,7 @@ int eval(position_t *pos)
 
   p_occ = pos->piece_occ[PAWN];
   occ = pos->occ[WHITE] | pos->occ[BLACK];
+  r_occ = ~occ;
   pushed_passers = phash_data.pushed_passers;
 
   for (side = WHITE; side < N_SIDES; side ++)
@@ -148,6 +151,7 @@ int eval(position_t *pos)
     p_occ_f = p_occ & occ_f;
     p_occ_o = p_occ & occ_o;
     n_occ = ~(p_occ_f | p_att[side ^ 1]);
+    occ_o_np = occ_o & ~p_occ_o;
 
     n_att = knight_attack(occ, k_sq);
     b_att = bishop_attack(occ, k_sq);
@@ -210,8 +214,14 @@ int eval(position_t *pos)
 
     // threats by protected pawns
     pcnt = _popcnt(
-      pawn_attacks(att_area[side] & p_occ_f, side) & occ_o & ~p_occ_o
+      pawn_attacks(att_area[side] & p_occ_f, side) & occ_o_np
     ) << PAWN_THREAT_SHIFT;
+
+    // threats by protected pawns (after push)
+    score_mid += _popcnt(
+      pawn_attacks(att_area[side] & pushed_pawns(p_occ_f, r_occ, side), side) & occ_o_np
+    ) << PUSHED_PAWN_THREAT_SHIFT;
+
     score_mid += pcnt;
     score_end += pcnt;
 

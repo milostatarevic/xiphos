@@ -26,19 +26,19 @@
 #define MAX_GAME_PLY  1024
 
 typedef struct {
-  int tid, hash_keys_cnt, nodes;
+  int tid, hash_keys_cnt;
+  uint64_t nodes, hash_key;
   position_t *pos,
               pos_list[PLY_LIMIT];
   uint32_t history[P_LIMIT][BOARD_SIZE],
            bad_history[P_LIMIT][BOARD_SIZE];
   move_t   killer_moves[PLY_LIMIT][MAX_KILLER_MOVES],
            counter_moves[P_LIMIT][BOARD_SIZE];
-  uint64_t hash_key,
-           hash_keys[MAX_GAME_PLY];
+  uint64_t hash_keys[MAX_GAME_PLY];
 } search_data_t;
 
 struct {
-  int max_threads, max_depth, max_time, done, depth,
+  int max_threads, max_depth, max_time, done, score, depth,
       search_depth_cnt[MAX_DEPTH];
   move_t best_move;
   uint64_t time_in_ms;

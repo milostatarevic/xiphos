@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.2.2"
+#define VERSION                      "Xiphos 0.2.3"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
@@ -32,7 +32,7 @@
   #define ARCH                       "SSE"
 #endif
 
-#define MAX_THREADS                  64
+#define MAX_THREADS                  128
 #define DEFAULT_THREADS              1
 #define DEFAULT_HASH_SIZE_IN_MB      128
 

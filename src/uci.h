@@ -24,7 +24,7 @@
 extern char initial_fen[];
 
 void read_fen(search_data_t *, char *, int);
-void uci_info(int, int);
+void uci_info();
 void uci();
 
 #endif
