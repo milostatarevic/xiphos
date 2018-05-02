@@ -26,6 +26,7 @@
 #define BAD_PAWN_PENALTY          16
 
 #define SAFE_CHECK_SHIFT          3
+#define K_SQ_ATTACK_SHIFT         1
 #define PUSHED_PASSERS_SHIFT      4
 #define THREAT_SHIFT              4
 #define PAWN_THREAT_SHIFT         6
@@ -126,7 +127,7 @@ int eval(position_t *pos)
   uint64_t b, b0, k_zone, occ, r_occ, occ_f, occ_o, occ_x, n_occ,
            p_occ, p_occ_f, p_occ_o, occ_o_np,
            n_att, b_att, r_att, pushed_passers,
-           p_att[N_SIDES], att_area[N_SIDES], checks[N_SIDES];
+           p_att[N_SIDES], att_area[N_SIDES], att_area_nk[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
 
   phash_data = eval_pawns(pos);
@@ -158,7 +159,7 @@ int eval(position_t *pos)
     r_att = rook_attack(occ, k_sq);
 
     checks[side] = 0;
-    att_area[side] = p_att[side] | _b_piece_area[KING][pos->k_sq[side]];
+    att_area_nk[side] = p_att[side];
     k_score[side] = k_cnt[side] = 0;
 
     #define _score_rook_open_files                                             \
@@ -174,7 +175,7 @@ int eval(position_t *pos)
         _loop(b0)                                                              \
         {                                                                      \
           sq = _bsf(b0);                                                       \
-          att_area[side] |= b = method(occ_x, sq);                             \
+          att_area_nk[side] |= b = method(occ_x, sq);                          \
                                                                                \
           b &= n_occ;                                                          \
           pcnt += _popcnt(b);                                                  \
@@ -205,6 +206,9 @@ int eval(position_t *pos)
 
     occ_x ^= pos->piece_occ[ROOK] & occ_f & ~(side == WHITE ? _B_RANK_1 : _B_RANK_8);
     _score_piece(ROOK, rook_attack, r_att, _score_rook_open_files);
+
+    // include king attack
+    att_area[side] = att_area_nk[side] | _b_piece_area[KING][pos->k_sq[side]];
 
     // passer protection/attacks
     score_end += _popcnt(att_area[side] & pushed_passers) << PUSHED_PASSERS_SHIFT;
@@ -245,6 +249,11 @@ int eval(position_t *pos)
       k_cnt[side] ++;
       k_score[side] += _popcnt(b) << SAFE_CHECK_SHIFT;
     }
+
+    // attacked squares next to the king
+    b = _b_piece_area[KING][pos->k_sq[side ^ 1]] &
+         att_area[side] & ~att_area_nk[side ^ 1];
+    k_score[side] += _popcnt(b) << K_SQ_ATTACK_SHIFT;
 
     // scale king safety
     score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
