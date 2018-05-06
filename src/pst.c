@@ -21,6 +21,7 @@
 #include "game.h"
 
 int pst_mid[P_LIMIT][BOARD_SIZE], pst_end[P_LIMIT][BOARD_SIZE];
+const int adj_piece_value_mid[N_PIECES] = { -20, 0, 0, 0, 0, 0 };
 
 const int pst_mid_base[N_PIECES][BOARD_SIZE] = {
   {
@@ -149,7 +150,7 @@ void init_pst()
   {
     for (j = 0; j < BOARD_SIZE; j ++)
     {
-      v = pst_mid_base[i][j] + piece_value[i];
+      v = pst_mid_base[i][j] + piece_value[i] + adj_piece_value_mid[i];
       pst_mid[i][j] = v;
       pst_mid[i | CHANGE_SIDE][j ^ 56] = v;
 

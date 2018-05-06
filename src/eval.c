@@ -23,6 +23,7 @@
 #include "position.h"
 
 #define KING_PAWNS_SHIFT          3
+#define DISTANCE_BONUS_SHIFT      2
 #define BAD_PAWN_PENALTY          16
 
 #define SAFE_CHECK_SHIFT          3
@@ -31,10 +32,8 @@
 #define THREAT_SHIFT              4
 #define PAWN_THREAT_SHIFT         6
 #define PUSHED_PAWN_THREAT_SHIFT  4
+#define BISHOP_PAIR_BONUS         40
 #define K_CNT_LIMIT               8
-
-#define BISHOP_PAIR_MID           40
-#define BISHOP_PAIR_END           60
 
 #define PHASE_SHIFT               7
 #define TOTAL_PHASE               (1 << PHASE_SHIFT)
@@ -62,7 +61,7 @@ void init_distance()
 
 phash_data_t eval_pawns(position_t *pos)
 {
-  int m, r, side, sq, ssq, k_sq_f, k_sq_o, score_mid, score_end;
+  int m, r, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end;
   uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o, p_occ_x;
   phash_data_t phash_data;
 
@@ -82,6 +81,7 @@ phash_data_t eval_pawns(position_t *pos)
 
     m = (side == WHITE) ? 7 : 0;
     b = p_occ_f;
+    d_max = 0;
 
     _loop(b)
     {
@@ -89,10 +89,12 @@ phash_data_t eval_pawns(position_t *pos)
       r = m ^ _rank(sq);
       ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
 
-      // distance bonus / passers
-      if (_b_passer_area[side][sq] & p_occ_o)
-        score_end += distance[ssq][k_sq_o] * r - distance[ssq][k_sq_f] * (r - 1);
-      else
+      // distance bonus
+      d = distance[ssq][k_sq_o] * r - distance[ssq][k_sq_f] * (r - 1);
+      if (d > d_max) d_max = d;
+
+      // passers
+      if (!(_b_passer_area[side][sq] & p_occ_o))
       {
         pushed_passers |= _b(ssq);
         score_mid += passer_bonus[r];
@@ -109,6 +111,7 @@ phash_data_t eval_pawns(position_t *pos)
         score_end -= BAD_PAWN_PENALTY;
       }
     }
+    score_end += d_max << DISTANCE_BONUS_SHIFT;
 
     // pawns in the king zone
     score_mid += _popcnt(_b_king_zone[k_sq_f] & p_occ_f) << KING_PAWNS_SHIFT;
@@ -232,8 +235,8 @@ int eval(position_t *pos)
     // bishop pair bonus
     if (_popcnt(pos->piece_occ[BISHOP] & occ_f) >= 2)
     {
-      score_mid += BISHOP_PAIR_MID;
-      score_end += BISHOP_PAIR_END;
+      score_mid += BISHOP_PAIR_BONUS;
+      score_end += BISHOP_PAIR_BONUS;
     }
 
     score_mid = -score_mid;
