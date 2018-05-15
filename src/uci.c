@@ -44,12 +44,11 @@
 
 #define MAX_REDUCE_TIME             1000
 #define REDUCE_TIME                 80
-#define REDUCE_TIME_PER_MOVE        5
-#define EXTEND_MOVE_TIME            80
-#define TIME_REDUCTION_COEFF        0.9
+#define REDUCE_TIME_PERCENT         5
+#define MIN_TIME_RATIO              0.6
+#define MAX_TIME_MOVES_TO_GO        3
 
-#define EXTEND_TIME_FOR_CNT         25
-#define DEFAULT_MOVES_TO_GO         25
+#define MAX_MOVES_TO_GO             25
 #define READ_BUFFER_SIZE            65536
 
 search_data_t *threads_search_data;
@@ -169,7 +168,8 @@ void uci_position_startpos(search_data_t *sd, char *buf)
 
 void uci_go(search_data_t *sd, char *buf)
 {
-  int max_threads, max_time, max_time_allowed, moves_to_go;
+  int max_threads, max_time, max_time_allowed, target_time, reduce_time,
+      moves_to_go;
   char *t;
   position_t *pos;
 
@@ -212,46 +212,37 @@ void uci_go(search_data_t *sd, char *buf)
   }
 
   shared_search_info.max_depth = MAX_DEPTH - 1;
-  shared_search_info.max_time = 0;
+  shared_search_info.min_time = shared_search_info.max_time = 0;
 
   if (shared_search_info.go.depth > 0)
   {
-    shared_search_info.max_time = (1 << 30);
+    shared_search_info.min_time = shared_search_info.max_time = (1 << 30);
     shared_search_info.max_depth =
       _min(shared_search_info.go.depth, shared_search_info.max_depth);
   }
   else
   {
     if (shared_search_info.go.movetime > 0)
-      shared_search_info.max_time =
+      shared_search_info.min_time = shared_search_info.max_time =
         _max(shared_search_info.go.movetime - REDUCE_TIME, 1);
     else
     {
-      if (shared_search_info.go.time < 0)
-        shared_search_info.go.time = 1;
-
-      moves_to_go = _min(shared_search_info.go.movestogo, EXTEND_TIME_FOR_CNT);
+      moves_to_go = _min(shared_search_info.go.movestogo, MAX_MOVES_TO_GO);
       if (moves_to_go == 0)
-        moves_to_go = DEFAULT_MOVES_TO_GO;
+        moves_to_go = MAX_MOVES_TO_GO;
 
-      max_time_allowed = _max(shared_search_info.go.time - REDUCE_TIME, 1);
-      max_time = _max(
-        max_time_allowed / moves_to_go +
-        shared_search_info.go.inc - REDUCE_TIME_PER_MOVE, 1
-      );
+      reduce_time = _min(
+        shared_search_info.go.time * REDUCE_TIME_PERCENT / 100, MAX_REDUCE_TIME
+      ) + REDUCE_TIME;
+      max_time_allowed = _max(shared_search_info.go.time - reduce_time, 1);
 
-      // if possible, try to leave more time to GUI
-      if (shared_search_info.go.movestogo <= 1 && max_time > EXTEND_MOVE_TIME &&
-          max_time - MAX_REDUCE_TIME < shared_search_info.go.time)
-      {
-        max_time =
-          _min(max_time,
-               _max(max_time * TIME_REDUCTION_COEFF,
-                    shared_search_info.go.time - MAX_REDUCE_TIME)
-              );
-        max_time = _max(max_time, EXTEND_MOVE_TIME);
-      }
+      target_time = max_time_allowed / moves_to_go + shared_search_info.go.inc;
+      shared_search_info.min_time =
+        _min(MIN_TIME_RATIO * target_time, max_time_allowed);
 
+      max_time =
+        max_time_allowed / _min(moves_to_go, MAX_TIME_MOVES_TO_GO) +
+        shared_search_info.go.inc;
       shared_search_info.max_time = _min(max_time, max_time_allowed);
     }
   }
@@ -408,4 +399,3 @@ void uci()
       set_max_threads(atoi(buf));
   }
 }
-

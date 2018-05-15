@@ -65,9 +65,9 @@ void init_lmr()
         lmr[d][m] = sqrt(d * m / 8);
 }
 
-static inline int draw(search_data_t *sd, int repetitions)
+static inline int draw(search_data_t *sd)
 {
-  int i, cnt, fifty_cnt;
+  int i, fifty_cnt;
 
   fifty_cnt = sd->pos->fifty_cnt;
   if (fifty_cnt >= 100 || insufficient_material(sd->pos))
@@ -76,14 +76,9 @@ static inline int draw(search_data_t *sd, int repetitions)
   if (fifty_cnt < 4)
     return 0;
 
-  cnt = 0;
   for (i = sd->hash_keys_cnt - 2; i >= (sd->hash_keys_cnt - fifty_cnt); i -= 2)
-  {
     if (sd->hash_keys[i] == sd->hash_key)
-      cnt ++;
-    if (cnt >= repetitions)
       return 1;
-  }
   return 0;
 }
 
@@ -101,7 +96,7 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
 
   pos = sd->pos;
   if (ply >= MAX_PLY) return eval(pos);
-  if (draw(sd, 1)) return 0;
+  if (draw(sd)) return 0;
 
   hash_depth = (pos->in_check || depth == 0) ? 0 : -1;
   use_hash = hash_depth == 0 || shared_search_info.max_threads > 1;
@@ -190,7 +185,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   if (ply >= MAX_PLY) return eval(pos);
 
   if (shared_search_info.done) return 0;
-  if (!root_node && draw(sd, 1)) return 0;
+  if (!root_node && draw(sd)) return 0;
 
   // load hash data
   use_hash = !skip_move;
@@ -468,7 +463,7 @@ void *search_thread(void *thread_data)
     alpha = _max(score - delta, -MATE_SCORE);
     beta = _min(score + delta, MATE_SCORE);
 
-    while (1)
+    while (delta <= MATE_SCORE)
     {
       score = pvs(sd, 1, 1, alpha, beta, depth, 0, 0, 0);
       if (shared_search_info.done) break;
@@ -482,10 +477,20 @@ void *search_thread(void *thread_data)
         break;
     }
     if (shared_search_info.done) break;
+
+    if (depth >= MIN_DEPTH_TO_REACH &&
+        time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.min_time)
+    {
+      pthread_mutex_lock(&mutex);
+      shared_search_info.done = 1;
+      pthread_mutex_unlock(&mutex);
+      break;
+    }
   }
 
-  if (depth > shared_search_info.max_depth)
-    shared_search_info.done = 1;
+  pthread_mutex_lock(&mutex);
+  shared_search_info.done = 1;
+  pthread_mutex_unlock(&mutex);
 
   pthread_exit(NULL);
 }
@@ -528,12 +533,6 @@ void search(search_data_t *sd, search_data_t *threads_search_data)
   int t;
   pthread_attr_t attr;
   pthread_t threads[MAX_THREADS];
-
-  if (draw(sd, 2))
-  {
-    print("bestmove (none)\n");
-    return;
-  }
 
   shared_search_info.time_in_ms = time_in_ms();
   set_hash_iteration();
