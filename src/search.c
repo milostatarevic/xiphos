@@ -375,17 +375,12 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       if (score > alpha)
       {
         best_move = move;
-        if (ply == 0)
+        if (ply == 0 && sd->tid == 0)
         {
-          pthread_mutex_lock(&mutex);
-          if (shared_search_info.depth <= depth)
-          {
-            shared_search_info.score = score;
-            shared_search_info.depth = depth;
-            shared_search_info.best_move = move;
-            uci_info();
-          }
-          pthread_mutex_unlock(&mutex);
+          shared_search_info.score = score;
+          shared_search_info.depth = depth;
+          shared_search_info.best_move = move;
+          uci_info();
         }
 
         alpha = score;
@@ -432,32 +427,22 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
 void *search_thread(void *thread_data)
 {
-  int depth, search_depth_cnt, score, alpha, beta, delta,
-      threads_cnt, threads_max;
+  int depth, search_depth_cnt, score, alpha, beta, delta;
   search_data_t *sd;
 
   sd = (search_data_t *)thread_data;
   sd->nodes = 0;
 
   score = 0;
-  threads_cnt = threads_max = (shared_search_info.max_threads + 1) >> 1;
   for (depth = 1; depth <= shared_search_info.max_depth; depth ++)
   {
     pthread_mutex_lock(&mutex);
-    search_depth_cnt = shared_search_info.search_depth_cnt[depth];
+    search_depth_cnt = ++shared_search_info.search_depth_cnt[depth];
     pthread_mutex_unlock(&mutex);
 
-    if (search_depth_cnt >= threads_cnt)
-    {
-      threads_cnt = _max(threads_cnt >> 1, 1);
+    if (sd->tid && depth > 1 && depth < shared_search_info.max_depth &&
+        search_depth_cnt > _max((shared_search_info.max_threads + 1) / 2, 2))
       continue;
-    }
-
-    pthread_mutex_lock(&mutex);
-    shared_search_info.search_depth_cnt[depth] ++;
-    pthread_mutex_unlock(&mutex);
-
-    threads_cnt = threads_max;
 
     delta = (depth >= START_ASPIRATION_DEPTH) ? INIT_ASPIRATION_WINDOW : MATE_SCORE;
     alpha = _max(score - delta, -MATE_SCORE);
@@ -478,19 +463,17 @@ void *search_thread(void *thread_data)
     }
     if (shared_search_info.done) break;
 
-    if (depth >= MIN_DEPTH_TO_REACH &&
+    if (sd->tid == 0 && depth >= MIN_DEPTH_TO_REACH &&
         time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.min_time)
-    {
-      pthread_mutex_lock(&mutex);
-      shared_search_info.done = 1;
-      pthread_mutex_unlock(&mutex);
       break;
-    }
   }
 
-  pthread_mutex_lock(&mutex);
-  shared_search_info.done = 1;
-  pthread_mutex_unlock(&mutex);
+  if (sd->tid == 0)
+  {
+    pthread_mutex_lock(&mutex);
+    shared_search_info.done = 1;
+    pthread_mutex_unlock(&mutex);
+  }
 
   pthread_exit(NULL);
 }
