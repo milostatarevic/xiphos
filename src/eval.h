@@ -22,7 +22,7 @@
 #include "game.h"
 #include "position.h"
 
-#define CASTLING_BONUS      40
+#define CASTLING_BONUS      20
 
 extern const int piece_value[N_PIECES];
 extern const int piece_phase[N_PIECES];
