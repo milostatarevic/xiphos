@@ -28,6 +28,17 @@ enum {
   SEARCH,
 };
 
+enum {
+  IN_CHECK,
+  MATERIAL_MOVES,
+  KILLER_MOVE_0,
+  KILLER_MOVE_1,
+  COUNTER_MOVE,
+  QUIET_MOVES,
+  BAD_CAPTURES,
+  END,
+};
+
 typedef struct {
   int search_mode, phase, cnt, moves_cnt, bad_captures_cnt, searched_hash_move;
   move_t bad_captures[MAX_CAPTURES], moves[MAX_MOVES];

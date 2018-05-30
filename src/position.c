@@ -198,7 +198,7 @@ int gives_check(position_t *pos, move_t move, uint64_t pinned, uint64_t b_att,
   return 0;
 }
 
-int bad_SEE(position_t *pos, move_t move)
+int SEE(position_t *pos, move_t move)
 {
   int cnt, sq, p, pv, side, m_from, captured, captured_value, is_promotion, pqv,
       gain[MAX_CAPTURES];
@@ -283,7 +283,7 @@ int bad_SEE(position_t *pos, move_t move)
     if (gain[cnt - 1] > -gain[cnt])
       gain[cnt - 1] = -gain[cnt];
 
-  return gain[0] < 0;
+  return gain[0];
 }
 
 int insufficient_material(position_t *pos)

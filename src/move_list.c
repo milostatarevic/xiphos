@@ -25,17 +25,6 @@
 #include "move_list.h"
 #include "position.h"
 
-enum {
-  IN_CHECK,
-  MATERIAL_MOVES,
-  KILLER_MOVE_0,
-  KILLER_MOVE_1,
-  COUNTER_MOVE,
-  QUIET_MOVES,
-  BAD_CAPTURES,
-  END,
-};
-
 void init_move_list(move_list_t *ml, int search_mode, int in_check)
 {
   ml->search_mode = search_mode;
@@ -194,6 +183,7 @@ static inline void prepare_next_move(move_t *moves, int moves_cnt, int i)
 move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth,
                  int ply, int lmp_started, int minor_promotions)
 {
+  int see_score;
   move_t move, next_move;
 
   if (_is_m(hash_move) && !ml->searched_hash_move)
@@ -231,10 +221,11 @@ move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth
       continue;
 
     // put bad captures in a separate list
-    if (ml->phase == MATERIAL_MOVES && bad_SEE(sd->pos, next_move))
+    if (ml->phase == MATERIAL_MOVES && (see_score = SEE(sd->pos, next_move)) < 0)
     {
       if (ml->search_mode == SEARCH)
-        ml->bad_captures[ml->bad_captures_cnt ++] = next_move;
+        ml->bad_captures[ml->bad_captures_cnt ++] =
+          _m_with_score(next_move, see_score);
       continue;
     }
 

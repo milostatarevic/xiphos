@@ -34,7 +34,8 @@
 #define FUTILITY_DEPTH                6
 #define PROBCUT_DEPTH                 5
 #define IID_DEPTH                     5
-#define LMP_DEPTH                     4
+#define LMP_DEPTH                     8
+#define SEE_DEPTH                     6
 #define LMR_DEPTH                     3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
@@ -46,7 +47,8 @@
 
 #define _futility_margin(depth)       (80 * (depth))
 #define _null_move_reduction(depth)   ((depth) / 4 + 3)
-#define _lmp_count(depth)             (2 + (depth) * 2)
+#define _lmp_count(depth)             (2 + (1 << (depth - 1)))
+#define _see_margin(depth)            (-100 * (depth))
 
 pthread_mutex_t mutex;
 int lmr[MAX_DEPTH][MAX_MOVES];
@@ -167,7 +169,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         int depth, int ply, int use_pruning, move_t skip_move)
 {
   int i, searched_cnt, best_score, score, use_hash, hash_bound, hash_score,
-      static_score, beta_cut, lmp_started, new_depth, reduction, h_score;
+      static_score, beta_cut, lmp_started, new_depth, reduction, init_checks,
+      prune_move, h_score;
   move_t move, best_move, hash_move;
   uint64_t pinned, b_att, r_att;
   hash_data_t hash_data;
@@ -270,7 +273,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
         while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0, 0)))
         {
-          if (_m_eq(move, hash_move) && (_m_is_quiet(move) || bad_SEE(pos, move)))
+          if (_m_eq(move, hash_move) && (_m_is_quiet(move) || SEE(pos, move) < 0))
             continue;
 
           if (!legal_move(pos, move))
@@ -305,7 +308,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   hash_bound = HASH_UPPER_BOUND;
   best_score = -MATE_SCORE + ply;
   best_move = hash_move;
-  searched_cnt = lmp_started = 0;
+
+  searched_cnt = lmp_started = init_checks = 0;
   pinned = b_att = r_att = 0;
 
   while ((move = next_move(&move_list, sd, hash_move, depth, ply, lmp_started, root_node)))
@@ -313,18 +317,30 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     if (_m_eq(move, skip_move))
       continue;
 
-    // LMP
-    if (depth <= LMP_DEPTH && !pos->in_check && !pv_node &&
-        _m_is_quiet(move) && searched_cnt >= _lmp_count(depth))
+    if (!pos->in_check && !root_node)
     {
-      // init lookup for gives_check
-      if (!lmp_started)
-        pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
-                            &pinned, &b_att, &r_att);
+      prune_move = 0;
 
-      lmp_started = 1;
-      if (!gives_check(pos, move, pinned, b_att, r_att))
-        continue;
+      // LMP
+      if (depth <= LMP_DEPTH && _m_is_quiet(move) &&
+          searched_cnt >= _lmp_count(depth))
+        lmp_started = prune_move = 1;
+
+      // prune bad captures
+      if (depth <= SEE_DEPTH && move_list.phase == BAD_CAPTURES &&
+          _m_score(move) < _see_margin(depth))
+        prune_move = 1;
+
+      if (prune_move)
+      {
+        // init lookup for gives_check
+        if (!init_checks)
+          pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
+                              &pinned, &b_att, &r_att);
+        init_checks = 1;
+        if (!gives_check(pos, move, pinned, b_att, r_att))
+          continue;
+      }
     }
 
     if (!legal_move(pos, move))
