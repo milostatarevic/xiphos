@@ -210,8 +210,9 @@ move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth
       continue;
     }
 
-    // pull moves in order, skip during LMP
-    if (ml->moves_cnt > 1 && (!lmp_started || ml->phase != QUIET_MOVES))
+    // pull moves in order, skip during LMP or when bad captures are searched
+    if (ml->moves_cnt > 1 && ml->phase != BAD_CAPTURES &&
+        (!lmp_started || ml->phase != QUIET_MOVES))
       prepare_next_move(ml->moves, ml->moves_cnt, ml->cnt);
 
     next_move = ml->moves[ml->cnt ++];

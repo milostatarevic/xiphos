@@ -37,6 +37,7 @@
 #define LMP_DEPTH                     8
 #define SEE_DEPTH                     6
 #define LMR_DEPTH                     3
+#define LMR_SEARCHED_CNT              3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
 #define START_ASPIRATION_DEPTH        4
@@ -59,12 +60,7 @@ void init_lmr()
 
   for (d = 0; d < MAX_DEPTH; d ++)
     for (m = 0; m < MAX_MOVES; m ++)
-      if (m <= 2)
-        lmr[d][m] = 0;
-      else if (m <= 4)
-        lmr[d][m] = 1;
-      else
-        lmr[d][m] = sqrt(d * m / 8);
+      lmr[d][m] = sqrt(d * m / 8);
 }
 
 static inline int draw(search_data_t *sd)
@@ -190,6 +186,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   if (shared_search_info.done) return 0;
   if (!root_node && draw(sd)) return 0;
 
+  h_score = depth * depth;
+
   // load hash data
   use_hash = !skip_move;
   hash_move = hash_data.raw = 0;
@@ -209,7 +207,20 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         if ((hash_bound == HASH_LOWER_BOUND && hash_score >= beta) ||
             (hash_bound == HASH_UPPER_BOUND && hash_score <= alpha) ||
             (hash_bound == HASH_EXACT))
+        {
+          if (_m_is_quiet(hash_move))
+          {
+            if (hash_bound == HASH_LOWER_BOUND)
+            {
+              set_killer_move(sd, hash_move, ply);
+              set_counter_move(sd, hash_move);
+              add_to_history(sd, hash_move, h_score);
+            }
+            else if (hash_bound == HASH_UPPER_BOUND)
+              add_to_bad_history(sd, hash_move, h_score);
+          }
           return hash_score;
+        }
     }
   }
 
@@ -317,12 +328,12 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     if (_m_eq(move, skip_move))
       continue;
 
-    if (!pos->in_check && !root_node)
+    if (!root_node)
     {
       prune_move = 0;
 
       // LMP
-      if (depth <= LMP_DEPTH && _m_is_quiet(move) &&
+      if (depth <= LMP_DEPTH && move_list.phase == QUIET_MOVES &&
           searched_cnt >= _lmp_count(depth))
         lmp_started = prune_move = 1;
 
@@ -370,7 +381,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     {
       // LMR
       reduction = 0;
-      if (depth >= LMR_DEPTH && !pos->in_check && _m_is_quiet(move))
+      if (depth >= LMR_DEPTH && move_list.phase == QUIET_MOVES &&
+          searched_cnt >= LMR_SEARCHED_CNT)
         reduction = lmr[depth][searched_cnt];
 
       score = -pvs(sd, 0, 0, -alpha - 1, -alpha, new_depth - reduction, ply + 1, 1, 0);
@@ -408,7 +420,6 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           // save history / killer / counter moves
           if (!pos->in_check && _m_is_quiet(best_move))
           {
-            h_score = depth * depth;
             set_killer_move(sd, best_move, ply);
             set_counter_move(sd, best_move);
             add_to_history(sd, best_move, h_score);

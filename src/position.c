@@ -274,8 +274,6 @@ int SEE(position_t *pos, move_t move)
     if (is_promotion && p == PAWN)
       { pv += pqv; gain[cnt] += pqv; }
 
-    if (gain[cnt] < 0 && gain[cnt - 1] > 0)
-      break;
     cnt ++;
   }
 

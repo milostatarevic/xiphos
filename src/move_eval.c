@@ -20,9 +20,6 @@
 #include "move.h"
 #include "position.h"
 
-#define KILLER_MOVE_SCORE    ((1 << KILLER_MOVE_SHIFT) - 1)
-#define COUNTER_MOVE_SCORE   (KILLER_MOVE_SCORE - MAX_KILLER_MOVES)
-
 void eval_material_moves(position_t *pos, move_t *moves, int moves_cnt)
 {
   int i, piece;
