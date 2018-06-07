@@ -56,7 +56,7 @@ void init_distance()
 
   for (i = 0; i < BOARD_SIZE; i ++)
     for (j = 0; j < BOARD_SIZE; j ++)
-      distance[i][j] = _max(_abs(_rank(i) - _rank(j)), _abs(_file(i) - _file(j)));
+      distance[i][j] = _min(_max(_abs(_rank(i) - _rank(j)), _abs(_file(i) - _file(j))), 5);
 }
 
 phash_data_t eval_pawns(position_t *pos)
