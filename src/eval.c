@@ -32,6 +32,7 @@
 #define THREAT_SHIFT              4
 #define PAWN_THREAT_SHIFT         6
 #define PUSHED_PAWN_THREAT_SHIFT  4
+#define PAWN_MOBILITY_SHIFT       2
 #define BISHOP_PAIR_BONUS         40
 #define K_CNT_LIMIT               8
 
@@ -127,10 +128,10 @@ int eval(position_t *pos)
 {
   int side, score_mid, score_end, pcnt, k_sq, sq,
       k_score[N_SIDES], k_cnt[N_SIDES];
-  uint64_t b, b0, k_zone, occ, r_occ, occ_f, occ_o, occ_x, n_occ,
-           p_occ, p_occ_f, p_occ_o, occ_o_np,
-           n_att, b_att, r_att, pushed_passers,
-           p_att[N_SIDES], att_area[N_SIDES], att_area_nk[N_SIDES], checks[N_SIDES];
+  uint64_t b, b0, k_zone, occ, r_occ, occ_f, occ_o, occ_o_np, occ_x, n_occ,
+           p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att, pushed_passers,
+           p_att[N_SIDES], p_pushed[N_SIDES],
+           att_area[N_SIDES], att_area_nk[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
 
   phash_data = eval_pawns(pos);
@@ -143,7 +144,11 @@ int eval(position_t *pos)
   pushed_passers = phash_data.pushed_passers;
 
   for (side = WHITE; side < N_SIDES; side ++)
-    p_att[side] = pawn_attacks(p_occ & pos->occ[side], side);
+  {
+    p_occ_f = p_occ & pos->occ[side];
+    p_att[side] = pawn_attacks(p_occ_f, side);
+    p_pushed[side] = pushed_pawns(p_occ_f, r_occ, side);
+  }
 
   for (side = WHITE; side < N_SIDES; side ++)
   {
@@ -224,13 +229,13 @@ int eval(position_t *pos)
       pawn_attacks(att_area[side] & p_occ_f, side) & occ_o_np
     ) << PAWN_THREAT_SHIFT;
 
-    // threats by protected pawns (after push)
-    score_mid += _popcnt(
-      pawn_attacks(att_area[side] & pushed_pawns(p_occ_f, r_occ, side), side) & occ_o_np
-    ) << PUSHED_PAWN_THREAT_SHIFT;
-
     score_mid += pcnt;
     score_end += pcnt;
+
+    // threats by protected pawns (after push)
+    score_mid += _popcnt(
+      pawn_attacks(att_area[side] & p_pushed[side], side) & occ_o_np
+    ) << PUSHED_PAWN_THREAT_SHIFT;
 
     // bishop pair bonus
     if (_popcnt(pos->piece_occ[BISHOP] & occ_f) >= 2)
@@ -260,7 +265,14 @@ int eval(position_t *pos)
 
     // scale king safety
     score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
+
+    // pawn mobility
+    score_end += _popcnt(
+      p_pushed[side] & r_occ & (att_area[side] | ~att_area[side ^ 1])
+    ) << PAWN_MOBILITY_SHIFT;
+
     score_mid = -score_mid;
+    score_end = -score_end;
   }
 
   if (pos->side == BLACK)
