@@ -45,6 +45,7 @@
 #define RAZOR_MARGIN                  200
 #define PROBCUT_MARGIN                80
 #define INIT_ASPIRATION_WINDOW        10
+#define MIN_HASH_DEPTH                -2
 
 #define _futility_margin(depth)       (80 * (depth))
 #define _null_move_reduction(depth)   ((depth) / 4 + 3)
@@ -231,17 +232,13 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     static_score = -MATE_SCORE + ply;
   else
   {
-    if (hash_data.raw && hash_bound == HASH_EXACT)
+    if (hash_data.raw)
       static_score = hash_score;
     else
     {
       static_score = eval(pos);
-      if (hash_data.raw)
-      {
-        if ((hash_score < static_score && hash_bound == HASH_UPPER_BOUND) ||
-            (hash_score > static_score && hash_bound == HASH_LOWER_BOUND))
-          static_score = hash_score;
-      }
+      if (use_hash)
+        set_hash_data(sd, ply, 0, static_score, MIN_HASH_DEPTH, HASH_BOUND_NOT_USED);
     }
   }
 
