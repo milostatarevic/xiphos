@@ -233,9 +233,12 @@ int eval(position_t *pos)
     score_end += pcnt;
 
     // threats by protected pawns (after push)
-    score_mid += _popcnt(
+    pcnt = _popcnt(
       pawn_attacks(att_area[side] & p_pushed[side], side) & occ_o_np
     ) << PUSHED_PAWN_THREAT_SHIFT;
+
+    score_mid += pcnt;
+    score_end += pcnt >> 1;
 
     // bishop pair bonus
     if (_popcnt(pos->piece_occ[BISHOP] & occ_f) >= 2)
