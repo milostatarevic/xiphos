@@ -38,6 +38,7 @@
 
 #define PHASE_SHIFT               7
 #define TOTAL_PHASE               (1 << PHASE_SHIFT)
+#define TEMPO                     10
 
 const int piece_value[N_PIECES] = { 100, 310, 330, 500, 950, 20000 };
 const int piece_phase[N_PIECES] = { 0, 6, 6, 13, 28, 0 };
@@ -126,7 +127,7 @@ phash_data_t eval_pawns(position_t *pos)
 
 int eval(position_t *pos)
 {
-  int side, score_mid, score_end, pcnt, k_sq, sq,
+  int side, score, score_mid, score_end, pcnt, k_sq, sq,
       k_score[N_SIDES], k_cnt[N_SIDES];
   uint64_t b, b0, k_zone, occ, r_occ, occ_f, occ_o, occ_o_np, occ_x, n_occ,
            p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att, pushed_passers,
@@ -285,8 +286,10 @@ int eval(position_t *pos)
   }
 
   if (pos->phase >= TOTAL_PHASE)
-    return score_end;
+    score = score_end;
   else
-    return ((score_mid * (TOTAL_PHASE - pos->phase)) +
-            (score_end * pos->phase)) >> PHASE_SHIFT;
+    score = ((score_mid * (TOTAL_PHASE - pos->phase)) +
+             (score_end * pos->phase)) >> PHASE_SHIFT;
+
+  return score + TEMPO;
 }
