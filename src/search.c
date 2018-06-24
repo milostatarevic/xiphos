@@ -402,6 +402,14 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         best_move = move;
         if (ply == 0 && sd->tid == 0)
         {
+          if (_m_eq(best_move, shared_search_info.best_move))
+          {
+            if (shared_search_info.best_move_cnt > 0)
+              shared_search_info.best_move_cnt --;
+          }
+          else
+            shared_search_info.best_move_cnt = TM_STEPS - 1;
+
           shared_search_info.score = score;
           shared_search_info.depth = depth;
           shared_search_info.best_move = move;
@@ -452,6 +460,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 void *search_thread(void *thread_data)
 {
   int depth, search_depth_cnt, score, alpha, beta, delta;
+  uint64_t target_time;
   search_data_t *sd;
 
   sd = (search_data_t *)thread_data;
@@ -487,8 +496,11 @@ void *search_thread(void *thread_data)
     }
     if (shared_search_info.done) break;
 
-    if (sd->tid == 0 && depth >= MIN_DEPTH_TO_REACH &&
-        time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.min_time)
+    target_time =
+      shared_search_info.target_time[shared_search_info.best_move_cnt];
+
+    if (target_time > 0 && sd->tid == 0 && depth >= MIN_DEPTH_TO_REACH &&
+        time_in_ms() - shared_search_info.time_in_ms >= target_time)
       break;
   }
 
@@ -541,7 +553,9 @@ void search(search_data_t *sd, search_data_t *threads_search_data)
   pthread_attr_t attr;
   pthread_t threads[MAX_THREADS];
 
+  shared_search_info.best_move_cnt = 0;
   shared_search_info.time_in_ms = time_in_ms();
+
   set_hash_iteration();
   reevaluate_position(sd->pos);
 

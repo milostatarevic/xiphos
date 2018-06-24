@@ -24,6 +24,7 @@
 #include "util.h"
 
 #define MAX_GAME_PLY  1024
+#define TM_STEPS      10
 
 typedef struct {
   int tid, hash_keys_cnt;
@@ -38,10 +39,10 @@ typedef struct {
 } search_data_t;
 
 struct {
-  int max_threads, max_depth, done, score, depth,
+  int max_threads, max_depth, done, score, depth, best_move_cnt,
       search_depth_cnt[MAX_DEPTH];
   move_t best_move;
-  uint64_t time_in_ms, min_time, max_time;
+  uint64_t time_in_ms, max_time, target_time[TM_STEPS];
   struct {
     int time, inc, movestogo, depth, movetime;
   } go;

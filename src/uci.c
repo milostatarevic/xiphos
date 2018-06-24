@@ -45,8 +45,9 @@
 #define MAX_REDUCE_TIME             1000
 #define REDUCE_TIME                 80
 #define REDUCE_TIME_PERCENT         5
-#define MIN_TIME_RATIO              0.6
 #define MAX_TIME_MOVES_TO_GO        3
+#define MIN_TIME_RATIO              0.5
+#define MAX_TIME_RATIO              1.2
 
 #define MAX_MOVES_TO_GO             25
 #define READ_BUFFER_SIZE            65536
@@ -168,8 +169,8 @@ void uci_position_startpos(search_data_t *sd, char *buf)
 
 void uci_go(search_data_t *sd, char *buf)
 {
-  int max_threads, max_time, max_time_allowed, target_time, reduce_time,
-      moves_to_go;
+  int i, max_threads, max_time_allowed, target_time, max_time, reduce_time, moves_to_go;
+  double ratio;
   char *t;
   position_t *pos;
 
@@ -212,18 +213,17 @@ void uci_go(search_data_t *sd, char *buf)
   }
 
   shared_search_info.max_depth = MAX_DEPTH - 1;
-  shared_search_info.min_time = shared_search_info.max_time = 0;
 
   if (shared_search_info.go.depth > 0)
   {
-    shared_search_info.min_time = shared_search_info.max_time = (1 << 30);
+    shared_search_info.max_time = (1 << 30);
     shared_search_info.max_depth =
       _min(shared_search_info.go.depth, shared_search_info.max_depth);
   }
   else
   {
     if (shared_search_info.go.movetime > 0)
-      shared_search_info.min_time = shared_search_info.max_time =
+      shared_search_info.max_time =
         _max(shared_search_info.go.movetime - REDUCE_TIME, 1);
     else
     {
@@ -237,8 +237,13 @@ void uci_go(search_data_t *sd, char *buf)
       max_time_allowed = _max(shared_search_info.go.time - reduce_time, 1);
 
       target_time = max_time_allowed / moves_to_go + shared_search_info.go.inc;
-      shared_search_info.min_time =
-        _min(MIN_TIME_RATIO * target_time, max_time_allowed);
+      for (i = 0; i < TM_STEPS; i ++)
+      {
+        ratio = MIN_TIME_RATIO +
+                i * (MAX_TIME_RATIO - MIN_TIME_RATIO) / (TM_STEPS - 1);
+        shared_search_info.target_time[i] =
+          _min(ratio * target_time, max_time_allowed);
+      }
 
       max_time =
         max_time_allowed / _min(moves_to_go, MAX_TIME_MOVES_TO_GO) +
