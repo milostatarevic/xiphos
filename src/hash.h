@@ -44,15 +44,17 @@ struct {
 typedef union {
   struct {
     move_t move;
+    int16_t static_score;
     int8_t depth;
-    uint8_t bound, iter;
+    unsigned char bound:2, iter:6;
   };
   uint64_t raw;
 } hash_data_t;
+_Static_assert(sizeof(hash_data_t) == 8, "hash_data_t size error");
 
 int adjust_hash_score(int, int);
 hash_data_t get_hash_data(search_data_t *);
-void set_hash_data(search_data_t *, int, move_t, int, int, int);
+void set_hash_data(search_data_t *, move_t, int, int, int, int, int);
 void set_hash_iteration();
 void reset_hash_key(search_data_t *);
 uint64_t init_hash(int);

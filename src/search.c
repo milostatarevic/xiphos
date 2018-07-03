@@ -81,9 +81,9 @@ static inline int draw(search_data_t *sd)
   return 0;
 }
 
-int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
+int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int ply)
 {
-  int use_hash, hash_depth, hash_bound, best_score, score;
+  int hash_depth, hash_bound, hash_score, static_score, best_score, score;
   move_t move, best_move, hash_move;
   hash_data_t hash_data;
   position_t *pos;
@@ -97,33 +97,42 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
   if (ply >= MAX_PLY) return eval(pos);
   if (draw(sd)) return 0;
 
-  hash_depth = (pos->in_check || depth == 0) ? 0 : -1;
-  use_hash = hash_depth == 0 || shared_search_info.max_threads > 1;
   hash_move = 0;
+  hash_score = -MATE_SCORE;
+  hash_bound = HASH_BOUND_NOT_USED;
+  hash_depth = (pos->in_check || depth == 0) ? 0 : -1;
 
-  if (use_hash)
+  hash_data = get_hash_data(sd);
+  if (hash_data.raw)
   {
-    hash_data = get_hash_data(sd);
-    if (hash_data.raw && hash_data.depth >= hash_depth)
-    {
-      hash_move = hash_data.move;
-      hash_bound = hash_data.bound;
+    hash_move = hash_data.move;
+    hash_bound = hash_data.bound;
+    hash_score = adjust_hash_score(_m_score(hash_move), ply);
 
-      score = adjust_hash_score(_m_score(hash_move), ply);
-      if ((hash_bound == HASH_LOWER_BOUND && score >= beta) ||
-          (hash_bound == HASH_UPPER_BOUND && score <= alpha) ||
+    if (!pv_node && hash_data.depth >= hash_depth)
+    {
+      if ((hash_bound == HASH_LOWER_BOUND && hash_score >= beta) ||
+          (hash_bound == HASH_UPPER_BOUND && hash_score <= alpha) ||
           (hash_bound == HASH_EXACT))
-        return score;
+        return hash_score;
     }
   }
 
   if (pos->in_check)
   {
-    best_score = -MATE_SCORE + ply;
+    best_score = static_score = -MATE_SCORE + ply;
   }
   else
   {
-    best_score = eval(pos);
+    best_score = static_score = hash_data.raw ? hash_data.static_score : eval(pos);
+    if (hash_data.raw)
+    {
+      if ((hash_bound == HASH_LOWER_BOUND && hash_score > static_score) ||
+          (hash_bound == HASH_UPPER_BOUND && hash_score < static_score) ||
+          (hash_bound == HASH_EXACT))
+        best_score = hash_score;
+    }
+
     if (best_score >= beta) return best_score;
     if (alpha < best_score) alpha = best_score;
   }
@@ -138,7 +147,7 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
       continue;
 
     make_move(sd, move);
-    score = -qsearch(sd, -beta, -alpha, depth - 1, ply + 1);
+    score = -qsearch(sd, 0, -beta, -alpha, depth - 1, ply + 1);
     undo_move(sd);
 
     if (score > best_score)
@@ -157,8 +166,7 @@ int qsearch(search_data_t *sd, int alpha, int beta, int depth, int ply)
       }
     }
   }
-  if (use_hash)
-    set_hash_data(sd, ply, best_move, best_score, hash_depth, hash_bound);
+  set_hash_data(sd, best_move, best_score, static_score, hash_depth, ply, hash_bound);
   return best_score;
 }
 
@@ -166,8 +174,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         int depth, int ply, int use_pruning, move_t skip_move)
 {
   int i, searched_cnt, best_score, score, use_hash, hash_bound, hash_score,
-      static_score, beta_cut, lmp_started, new_depth, reduction, init_checks,
-      prune_move, h_score;
+      static_score, improving, beta_cut, lmp_started, new_depth, reduction,
+      init_checks, prune_move, h_score;
   move_t move, best_move, hash_move;
   uint64_t pinned, b_att, r_att;
   hash_data_t hash_data;
@@ -175,7 +183,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   move_list_t move_list;
 
   if (depth <= 0)
-    return qsearch(sd, alpha, beta, 0, ply);
+    return qsearch(sd, pv_node, alpha, beta, 0, ply);
 
   alpha = _max(alpha, -MATE_SCORE + ply);
   beta = _min(beta, MATE_SCORE - ply + 1);
@@ -233,13 +241,24 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   else
   {
     if (hash_data.raw)
-      static_score = hash_score;
+      static_score = hash_data.static_score;
     else
     {
       static_score = eval(pos);
       if (use_hash)
-        set_hash_data(sd, ply, 0, static_score, MIN_HASH_DEPTH, HASH_BOUND_NOT_USED);
+        set_hash_data(sd, 0, 0, static_score, MIN_HASH_DEPTH, ply, HASH_BOUND_NOT_USED);
     }
+  }
+  pos->static_score = static_score;
+  improving = !pos->in_check && ply >= 2 && static_score >= (sd->pos-2)->static_score;
+
+  best_score = static_score;
+  if (hash_data.raw && !pos->in_check)
+  {
+    if ((hash_bound == HASH_LOWER_BOUND && hash_score > static_score) ||
+        (hash_bound == HASH_UPPER_BOUND && hash_score < static_score) ||
+        (hash_bound == HASH_EXACT))
+      best_score = hash_score;
   }
 
   if (use_pruning && !pos->in_check && !_is_mate_score(beta))
@@ -247,20 +266,20 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     if (!pv_node)
     {
       // razoring
-      if (depth <= RAZOR_DEPTH && static_score + RAZOR_MARGIN < beta)
+      if (depth <= RAZOR_DEPTH && best_score + RAZOR_MARGIN < beta)
       {
-        score = qsearch(sd, alpha, beta, 0, ply);
+        score = qsearch(sd, 0, alpha, beta, 0, ply);
         if (score < beta) return score;
       }
 
       if (non_pawn_material(pos))
       {
         // futility
-        if (depth <= FUTILITY_DEPTH && static_score >= beta + _futility_margin(depth))
-          return static_score;
+        if (depth <= FUTILITY_DEPTH && best_score >= beta + _futility_margin(depth))
+          return best_score;
 
         // null move
-        if (depth >= 2 && static_score >= beta)
+        if (depth >= 2 && best_score >= beta)
         {
           make_null_move(sd);
           score = -pvs(sd, 0, 0, -beta, -beta + 1,
@@ -380,7 +399,15 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       reduction = 0;
       if (depth >= LMR_DEPTH && move_list.phase == QUIET_MOVES &&
           searched_cnt >= LMR_SEARCHED_CNT)
+      {
         reduction = lmr[depth][searched_cnt];
+
+        if (!improving) reduction ++;
+        if (reduction && pv_node) reduction --;
+
+        if (reduction >= new_depth)
+          reduction = new_depth - 1;
+      }
 
       score = -pvs(sd, 0, 0, -alpha - 1, -alpha, new_depth - reduction, ply + 1, 1, 0);
       if (reduction && score > alpha)
@@ -452,7 +479,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
   // save hash item
   if (use_hash)
-    set_hash_data(sd, ply, best_move, best_score, depth, hash_bound);
+    set_hash_data(sd, best_move, best_score, static_score, depth, ply, hash_bound);
 
   return best_score;
 }

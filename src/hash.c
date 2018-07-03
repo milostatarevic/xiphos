@@ -91,7 +91,8 @@ hash_data_t get_hash_data(search_data_t *sd)
   return hash_data;
 }
 
-void set_hash_data(search_data_t *sd, int ply, move_t move, int score, int depth, int bound)
+void set_hash_data(search_data_t *sd, move_t move, int score, int static_score,
+                   int depth, int ply, int bound)
 {
   hash_item_t *hash_item;
   hash_data_t hash_data;
@@ -103,6 +104,7 @@ void set_hash_data(search_data_t *sd, int ply, move_t move, int score, int depth
       hash_data.depth <= depth || hash_data.iter != hash_store.iter)
   {
     hash_data.move = _m_with_score(move, to_hash_score(score, ply));
+    hash_data.static_score = static_score;
     hash_data.depth = depth;
     hash_data.bound = bound;
     hash_data.iter = hash_store.iter;

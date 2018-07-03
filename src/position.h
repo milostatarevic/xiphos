@@ -38,7 +38,8 @@ typedef struct {
            phase,
            k_sq[N_SIDES];
   int16_t  score_mid,
-           score_end;
+           score_end,
+           static_score;
   uint64_t phash_key,
            occ[N_SIDES],
            piece_occ[N_PIECES - 1],
