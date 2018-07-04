@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.3.1"
+#define VERSION                      "Xiphos 0.3.2"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
@@ -61,6 +61,7 @@
 #define _max(a, b)                   ((a) >= (b) ? (a) : (b))
 #define _min(a, b)                   ((a) < (b) ? (a) : (b))
 #define _abs(a)                      ((a) < 0 ? -(a) : (a))
+#define _sqr(a)                      ((a) * (a))
 
 #define _rank(sq)                    ((sq) >> 3)
 #define _file(sq)                    ((sq) & 0x7)

@@ -49,47 +49,23 @@ move_t get_counter_move(search_data_t *sd)
   return sd->counter_moves[sd->pos->board[m_to]][m_to];
 }
 
-void age_history(search_data_t *sd)
+void add_to_history(search_data_t *sd, int16_t *cmh_ptr, move_t move, int score)
 {
-  int i, j;
+  int16_t *item;
 
-  for (i = 0; i < P_LIMIT; i++)
-    for (j = 0; j < BOARD_SIZE; j++)
-    {
-      sd->history[i][j] >>= 1;
-      sd->bad_history[i][j] >>= 1;
-    }
-}
+  item = &sd->history[sd->pos->side][_m_from(move)][_m_to(move)];
+  *item += score - (*item) * _abs(score) / MAX_HISTORY_SCORE;
 
-void add_to_history(search_data_t *sd, move_t move, int score)
-{
-  int m_from, m_to, piece;
-
-  m_from = _m_from(move);
-  m_to = _m_to(move);
-  piece = sd->pos->board[m_from];
-  sd->history[piece][m_to] += score;
-  if (sd->history[piece][m_to] >= MAX_HISTORY_SCORE)
-    age_history(sd);
-}
-
-void add_to_bad_history(search_data_t *sd, move_t move, int score)
-{
-  int m_from, m_to, piece;
-
-  m_from = _m_from(move);
-  m_to = _m_to(move);
-  piece = sd->pos->board[m_from];
-  sd->bad_history[piece][m_to] += score;
-  if (sd->bad_history[piece][m_to] >= MAX_HISTORY_SCORE)
-    age_history(sd);
+  if (cmh_ptr)
+  {
+    item = &_counter_move_history_item(sd->pos, cmh_ptr, move);
+    *item += score - (*item) * _abs(score) / MAX_HISTORY_SCORE;
+  }
 }
 
 void clear_history(search_data_t *sd)
 {
   memset(sd->history, 0, sizeof(sd->history));
-  memset(sd->bad_history, 0, sizeof(sd->bad_history));
-
   memset(sd->killer_moves, 0, sizeof(sd->killer_moves));
   memset(sd->counter_moves, 0, sizeof(sd->counter_moves));
 }

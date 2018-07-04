@@ -336,16 +336,18 @@ int _cmd_cmp(char **buf, const char *cmd_str)
 
 void uci()
 {
-  search_data_t sd;
+  search_data_t *sd;
   char *buf, input_buf[READ_BUFFER_SIZE];
 
   print("%s %s by %s\n", VERSION, ARCH, AUTHOR);
 
+  sd = (search_data_t *) malloc(sizeof(search_data_t));
+
   threads_search_data = NULL;
   set_max_threads(DEFAULT_THREADS);
-  set_hash_size(&sd, DEFAULT_HASH_SIZE_IN_MB);
+  set_hash_size(sd, DEFAULT_HASH_SIZE_IN_MB);
 
-  read_fen(&sd, initial_fen, 1);
+  read_fen(sd, initial_fen, 1);
   setbuf(stdout, NULL);
 
   while(1)
@@ -377,28 +379,28 @@ void uci()
       break;
 
     else if (_cmd_cmp(&buf, CMD_NEW_GAME))
-      read_fen(&sd, initial_fen, 1);
+      read_fen(sd, initial_fen, 1);
 
     else if (_cmd_cmp(&buf, CMD_POSITION_FEN))
-      read_fen(&sd, buf, 0);
+      read_fen(sd, buf, 0);
 
     else if (_cmd_cmp(&buf, CMD_POSITION_STARTPOS))
-      uci_position_startpos(&sd, buf);
+      uci_position_startpos(sd, buf);
 
     else if (_cmd_cmp(&buf, CMD_GO))
-      uci_go(&sd, buf);
+      uci_go(sd, buf);
 
     else if (_cmd_cmp(&buf, CMD_PERFT))
-      uci_perft(&sd, buf);
+      uci_perft(sd, buf);
 
     else if (_cmd_cmp(&buf, CMD_TEST))
-      run_tests(&sd);
+      run_tests(sd);
 
     else if (_cmd_cmp(&buf, CMD_PRINT))
-      print_board(sd.pos);
+      print_board(sd->pos);
 
     else if (_cmd_cmp(&buf, OPTION_HASH))
-      set_hash_size(&sd, atoi(buf));
+      set_hash_size(sd, atoi(buf));
 
     else if (_cmd_cmp(&buf, OPTION_THREADS))
       set_max_threads(atoi(buf));

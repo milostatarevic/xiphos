@@ -25,25 +25,37 @@
 #include "search.h"
 
 #define KILLER_MOVE_SHIFT         15
-#define MAX_HISTORY_SCORE_SHIFT   (KILLER_MOVE_SHIFT - 1)
-#define MAX_HISTORY_SCORE         (1 << MAX_HISTORY_SCORE_SHIFT)
+#define MAX_HISTORY_SCORE         (1 << (KILLER_MOVE_SHIFT - 2))
+
+#define _counter_move_history_item(pos, cmh_ptr, move)                         \
+  cmh_ptr[pos->board[_m_from(move)] * BOARD_SIZE + _m_to(move)]
+
+static inline int16_t *_counter_move_history_pointer(search_data_t *sd)
+{
+  position_t *pos;
+
+  pos = sd->pos;
+  if (pos->move)
+    return sd->counter_move_history[pos->board[_m_to(pos->move)]][_m_to(pos->move)];
+  else
+    return NULL;
+}
+
+static inline int get_h_score(search_data_t *sd, int16_t *cmh_ptr, move_t move)
+{
+  int score;
+
+  score = sd->history[sd->pos->side][_m_from(move)][_m_to(move)];
+  if (cmh_ptr)
+    score += _counter_move_history_item(sd->pos, cmh_ptr, move);
+
+  return score;
+}
 
 void clear_history(search_data_t *);
 void set_killer_move(search_data_t *, move_t, int);
 void set_counter_move(search_data_t *, move_t);
 move_t get_counter_move(search_data_t *);
-void add_to_bad_history(search_data_t *, move_t, int);
-void add_to_history(search_data_t *, move_t, int);
-
-static inline int get_h_score(search_data_t *sd, position_t *pos, move_t move)
-{
-  int piece, m_to, h;
-
-  piece = pos->board[_m_from(move)];
-  m_to = _m_to(move);
-  h = sd->history[piece][m_to] + 1;
-
-  return (h << MAX_HISTORY_SCORE_SHIFT) / (sd->bad_history[piece][m_to] + h);
-}
+void add_to_history(search_data_t *, int16_t *, move_t, int);
 
 #endif

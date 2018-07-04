@@ -41,6 +41,7 @@
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
 #define START_ASPIRATION_DEPTH        4
+#define MAX_HISTORY_DEPTH             16
 
 #define RAZOR_MARGIN                  200
 #define PROBCUT_MARGIN                80
@@ -173,14 +174,16 @@ int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int 
 int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         int depth, int ply, int use_pruning, move_t skip_move)
 {
-  int i, searched_cnt, best_score, score, use_hash, hash_bound, hash_score,
-      static_score, improving, beta_cut, lmp_started, new_depth, reduction,
-      init_checks, prune_move, h_score;
+  int i, searched_cnt, quiet_moves_cnt, best_score, static_score, score,
+      use_hash, hash_bound, hash_score, improving, beta_cut, lmp_started,
+      new_depth, reduction, init_checks, prune_move, h_score;
   move_t move, best_move, hash_move;
   uint64_t pinned, b_att, r_att;
   hash_data_t hash_data;
+  int16_t *cmh_ptr;
   position_t *pos;
   move_list_t move_list;
+  move_t quiet_moves[MAX_MOVES];
 
   if (depth <= 0)
     return qsearch(sd, pv_node, alpha, beta, 0, ply);
@@ -195,7 +198,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   if (shared_search_info.done) return 0;
   if (!root_node && draw(sd)) return 0;
 
-  h_score = depth * depth;
+  h_score = _sqr(_min(depth, MAX_HISTORY_DEPTH)) * 32;
+  cmh_ptr = _counter_move_history_pointer(sd);
 
   // load hash data
   use_hash = !skip_move;
@@ -223,10 +227,10 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
             {
               set_killer_move(sd, hash_move, ply);
               set_counter_move(sd, hash_move);
-              add_to_history(sd, hash_move, h_score);
+              add_to_history(sd, cmh_ptr, hash_move, h_score);
             }
             else if (hash_bound == HASH_UPPER_BOUND)
-              add_to_bad_history(sd, hash_move, h_score);
+              add_to_history(sd, cmh_ptr, hash_move, -h_score);
           }
           return hash_score;
         }
@@ -336,7 +340,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   best_score = -MATE_SCORE + ply;
   best_move = hash_move;
 
-  searched_cnt = lmp_started = init_checks = 0;
+  searched_cnt = quiet_moves_cnt = lmp_started = init_checks = 0;
   pinned = b_att = r_att = 0;
 
   while ((move = next_move(&move_list, sd, hash_move, depth, ply, lmp_started, root_node)))
@@ -454,23 +458,18 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           {
             set_killer_move(sd, best_move, ply);
             set_counter_move(sd, best_move);
-            add_to_history(sd, best_move, h_score);
+            add_to_history(sd, cmh_ptr, best_move, h_score);
 
-            if (_is_m(hash_move) && !_m_eq(hash_move, best_move) &&
-                _m_is_quiet(hash_move))
-              add_to_bad_history(sd, hash_move, h_score);
-
-            for (i = 0; i < move_list.cnt; i ++)
-            {
-              move = move_list.moves[i];
-              if (!_m_eq(hash_move, move) && !_m_eq(best_move, move))
-                add_to_bad_history(sd, move, h_score);
-            }
+            for (i = 0; i < quiet_moves_cnt; i ++)
+              add_to_history(sd, cmh_ptr, quiet_moves[i], -h_score);
           }
           break;
         }
       }
     }
+
+    if (_m_is_quiet(move))
+      quiet_moves[quiet_moves_cnt ++] = move;
   }
 
   // mate/stalemate
