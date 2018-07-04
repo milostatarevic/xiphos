@@ -13,6 +13,7 @@ I would like to thank the authors and the community involved in the creation of 
 * [Chess Programming Wiki](https://chessprogramming.wikispaces.com/)
 * [Crafty](http://www.craftychess.com/)
 * [Demolito](https://github.com/lucasart/Demolito/)
+* [Ethereal](https://github.com/AndyGrant/Ethereal/)
 * [Hakkapeliitta](https://github.com/mAarnos/Hakkapeliitta/)
 * [Micro-Max](http://home.hccnet.nl/h.g.muller/max-src2.html)
 * [Senpai](https://www.chessprogramming.net/senpai/)
