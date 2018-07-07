@@ -34,7 +34,7 @@
 #define FUTILITY_DEPTH                6
 #define PROBCUT_DEPTH                 5
 #define IID_DEPTH                     5
-#define LMP_DEPTH                     8
+#define LMP_DEPTH                     10
 #define SEE_DEPTH                     6
 #define LMR_DEPTH                     3
 #define LMR_SEARCHED_CNT              3
@@ -45,16 +45,19 @@
 
 #define RAZOR_MARGIN                  200
 #define PROBCUT_MARGIN                80
-#define INIT_ASPIRATION_WINDOW        10
+#define INIT_ASPIRATION_WINDOW        6
 #define MIN_HASH_DEPTH                -2
 
 #define _futility_margin(depth)       (80 * (depth))
 #define _null_move_reduction(depth)   ((depth) / 4 + 3)
-#define _lmp_count(depth)             (2 + (1 << (depth - 1)))
 #define _see_margin(depth)            (-100 * (depth))
 
 pthread_mutex_t mutex;
 int lmr[MAX_DEPTH][MAX_MOVES];
+int lmp[][LMP_DEPTH + 1] = {
+  { 0, 3, 4, 6, 10, 15, 21, 28, 36, 45, 55 },
+  { 0, 5, 6, 9, 15, 23, 32, 42, 54, 68, 83 }
+};
 
 void init_lmr()
 {
@@ -354,7 +357,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
       // LMP
       if (depth <= LMP_DEPTH && move_list.phase == QUIET_MOVES &&
-          searched_cnt >= _lmp_count(depth))
+          searched_cnt >= lmp[improving][depth])
         lmp_started = prune_move = 1;
 
       // prune bad captures
@@ -512,7 +515,7 @@ void *search_thread(void *thread_data)
       score = pvs(sd, 1, 1, alpha, beta, depth, 0, 0, 0);
       if (shared_search_info.done) break;
 
-      delta <<= 1;
+      delta += 2 + delta / 2;
       if (score <= alpha)
         alpha = _max(score - delta, -MATE_SCORE);
       else if (score >= beta)

@@ -24,8 +24,7 @@
 #include "position.h"
 #include "search.h"
 
-#define KILLER_MOVE_SHIFT         15
-#define MAX_HISTORY_SCORE         (1 << (KILLER_MOVE_SHIFT - 2))
+#define MAX_HISTORY_SCORE         (1 << 13)
 
 #define _counter_move_history_item(pos, cmh_ptr, move)                         \
   cmh_ptr[pos->board[_m_from(move)] * BOARD_SIZE + _m_to(move)]
