@@ -412,6 +412,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         if (!improving) reduction ++;
         if (reduction && pv_node) reduction --;
 
+        reduction -= _m_score(move) / MAX_HISTORY_SCORE * 2;
+
         if (reduction >= new_depth)
           reduction = new_depth - 1;
       }
