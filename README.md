@@ -6,7 +6,7 @@ Xiphos is a UCI chess engine. The engine employs the modern search techniques an
 
 ### Acknowledgements
 
-This project is inspired by Garry Kasparov's "[Deep Thinking: Where Machine Intelligence Ends and Human Creativity Begins](http://www.kasparov.com/deep-thinking-ai)." This fantastic book has evoked my childhood passion, computer chess. I was wondering how hard it could be to develop an engine strong enough to suppress the legendary Deep Blue, so I gave it a try.
+This project is inspired by Garry Kasparov's "[Deep Thinking: Where Machine Intelligence Ends and Human Creativity Begins](http://www.kasparov.com/deep-thinking-ai)." This fantastic book has evoked my childhood passion, computer chess. I was wondering how hard it could be to develop an engine strong enough to surpass the legendary Deep Blue, so I gave it a try.
 
 I would like to thank the authors and the community involved in the creation of the open source projects listed below. Their work greatly inspired me, and without them, this project wouldn't exist.
 
