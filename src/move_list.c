@@ -181,7 +181,7 @@ static inline void prepare_next_move(move_t *moves, int moves_cnt, int i)
 }
 
 move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth,
-                 int ply, int lmp_started, int minor_promotions)
+                 int ply, int minor_promotions)
 {
   int see_score;
   move_t move, next_move;
@@ -211,8 +211,7 @@ move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth
     }
 
     // pull moves in order, skip during LMP or when bad captures are searched
-    if (ml->moves_cnt > 1 && ml->phase != BAD_CAPTURES &&
-        (!lmp_started || ml->phase != QUIET_MOVES))
+    if (ml->moves_cnt > 1 && ml->phase != BAD_CAPTURES)
       prepare_next_move(ml->moves, ml->moves_cnt, ml->cnt);
 
     next_move = ml->moves[ml->cnt ++];

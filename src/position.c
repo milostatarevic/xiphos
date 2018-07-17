@@ -149,55 +149,6 @@ int legal_move(position_t *pos, move_t move)
   return (_b_line[k_sq][m_to] & _b(m_from)) || (_b_line[k_sq][m_from] & _b(m_to));
 }
 
-static inline int discovered_check(position_t *pos, move_t move, uint64_t pinned)
-{
-  int m_to, m_from, k_sq;
-
-  m_from = _m_from(move);
-  if (!(pinned & _b(m_from)))
-    return 0;
-
-  m_to = _m_to(move);
-  k_sq = pos->k_sq[pos->side ^ 1];
-
-  return _equal_to(pos->board[m_from], KNIGHT) ||
-         (!(_b_line[k_sq][m_to] & _b(m_from)) && !(_b_line[k_sq][m_from] & _b(m_to)));
-}
-
-// doesn't work for ep?
-int gives_check(position_t *pos, move_t move, uint64_t pinned, uint64_t b_att,
-                uint64_t r_att)
-{
-  int k_sq, m_from, m_to, piece, w_piece;
-
-  if (pos->in_check)
-    return 0;
-
-  m_to = _m_to(move);
-  m_from = _m_from(move);
-  k_sq = pos->k_sq[pos->side ^ 1];
-  piece = pos->board[m_from];
-  w_piece = _to_white(piece);
-
-  if ((_b_piece_area[KING][k_sq] & _b(m_to)) &&
-      (_b_piece_area[piece][m_to] & _b(k_sq)))
-    return 1;
-
-  if (discovered_check(pos, move, pinned))
-    return 1;
-
-  if (w_piece == KNIGHT && (_b_piece_area[KNIGHT][m_to] & _b(k_sq)))
-    return 1;
-  else if (w_piece == BISHOP && (b_att & _b(m_to)))
-    return 1;
-  else if (w_piece == ROOK && (r_att & _b(m_to)))
-    return 1;
-  else if (w_piece == QUEEN && ((b_att | r_att) & _b(m_to)))
-    return 1;
-
-  return 0;
-}
-
 int SEE(position_t *pos, move_t move)
 {
   int cnt, sq, p, pv, side, m_from, captured, captured_value, is_promotion, pqv,

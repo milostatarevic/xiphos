@@ -51,7 +51,6 @@ _Static_assert(sizeof(position_t) == 160, "position_t size error");
 
 void set_pins_and_checks(position_t *);
 int legal_move(position_t *, move_t);
-int gives_check(position_t *, move_t, uint64_t, uint64_t, uint64_t);
 int SEE(position_t *, move_t);
 
 int insufficient_material(position_t *);

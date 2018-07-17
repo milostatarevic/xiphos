@@ -145,7 +145,7 @@ int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int 
   hash_bound = HASH_UPPER_BOUND;
   init_move_list(&move_list, QSEARCH, pos->in_check);
 
-  while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0, 0)))
+  while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0)))
   {
     if (!legal_move(pos, move))
       continue;
@@ -178,10 +178,9 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         int depth, int ply, int use_pruning, move_t skip_move)
 {
   int i, searched_cnt, quiet_moves_cnt, best_score, static_score, score,
-      use_hash, hash_bound, hash_score, improving, beta_cut, lmp_started,
-      new_depth, reduction, init_checks, prune_move, h_score;
+      use_hash, hash_bound, hash_score, improving, beta_cut, new_depth,
+      reduction, h_score;
   move_t move, best_move, hash_move;
-  uint64_t pinned, b_att, r_att;
   hash_data_t hash_data;
   int16_t *cmh_ptr;
   position_t *pos;
@@ -305,7 +304,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         beta_cut = beta + PROBCUT_MARGIN;
         init_move_list(&move_list, QSEARCH, pos->in_check);
 
-        while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0, 0)))
+        while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0)))
         {
           if (_m_eq(move, hash_move) && (_m_is_quiet(move) || SEE(pos, move) < 0))
             continue;
@@ -342,39 +341,27 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   hash_bound = HASH_UPPER_BOUND;
   best_score = -MATE_SCORE + ply;
   best_move = hash_move;
+  searched_cnt = quiet_moves_cnt = 0;
 
-  searched_cnt = quiet_moves_cnt = lmp_started = init_checks = 0;
-  pinned = b_att = r_att = 0;
-
-  while ((move = next_move(&move_list, sd, hash_move, depth, ply, lmp_started, root_node)))
+  while ((move = next_move(&move_list, sd, hash_move, depth, ply, root_node)))
   {
     if (_m_eq(move, skip_move))
       continue;
 
     if (!root_node)
     {
-      prune_move = 0;
-
       // LMP
       if (depth <= LMP_DEPTH && move_list.phase == QUIET_MOVES &&
           searched_cnt >= lmp[improving][depth])
-        lmp_started = prune_move = 1;
+      {
+        move_list.cnt = move_list.moves_cnt;
+        continue;
+      }
 
       // prune bad captures
       if (depth <= SEE_DEPTH && move_list.phase == BAD_CAPTURES &&
           _m_score(move) < _see_margin(depth))
-        prune_move = 1;
-
-      if (prune_move)
-      {
-        // init lookup for gives_check
-        if (!init_checks)
-          pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side,
-                              &pinned, &b_att, &r_att);
-        init_checks = 1;
-        if (!gives_check(pos, move, pinned, b_att, r_att))
-          continue;
-      }
+        continue;
     }
 
     if (!legal_move(pos, move))
