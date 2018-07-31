@@ -41,6 +41,7 @@ attack_lookup_t bishop_attack_lookup[BOARD_SIZE],
 
 uint64_t _b_piece_area[P_LIMIT][BOARD_SIZE],
          _b_passer_area[N_SIDES][BOARD_SIZE],
+         _b_connected_pawn_area[N_SIDES][BOARD_SIZE],
          _b_doubled_pawn_area[N_SIDES][BOARD_SIZE],
          _b_isolated_pawn_area[8], _b_file[8],
          _b_king_zone[BOARD_SIZE],
@@ -100,28 +101,31 @@ void init_piece_area()
 void init_pawn_boards()
 {
   int sq, side, r, ri, f, fi, inc;
-  uint64_t b, bp, bd, bi, bf;
+  uint64_t b, bp, bd, bc, bi, bf;
 
   for (sq = 0; sq < BOARD_SIZE; sq ++)
     for (side = 0; side < N_SIDES; side ++)
     {
-      bp = bd = bi = 0;
+      bp = bd = bc = bi = 0;
       inc = side == WHITE ? -1 : 1;
-      r = _rank(sq) + inc; f = _file(sq);
+      r = _rank(sq); f = _file(sq);
       for (fi = f - 1; fi <= f + 1; fi ++)
         if (fi >= 0 && fi < 8)
         {
-          for (ri = r; ri >= 0 && ri < 8; ri += inc)
+          for (ri = r + inc; ri >= 0 && ri < 8; ri += inc)
           {
             b = _b(_sq_rf(ri, fi));
             bp |= b;
             if (fi == f)
               bd |= b;
           }
+          if (fi != f)
+            bc |= _b(_sq_rf(r, fi)) | _b(_sq_rf(r - inc, fi));
         }
 
       _b_passer_area[side][sq] = bp;
       _b_doubled_pawn_area[side][sq] = bd;
+      _b_connected_pawn_area[side][sq] = bc;
     }
 
   for (f = 0; f < 8; f ++)

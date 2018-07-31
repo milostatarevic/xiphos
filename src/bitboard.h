@@ -54,6 +54,7 @@ extern attack_lookup_t bishop_attack_lookup[BOARD_SIZE],
 
 extern uint64_t _b_piece_area[P_LIMIT][BOARD_SIZE],
                 _b_passer_area[N_SIDES][BOARD_SIZE],
+                _b_connected_pawn_area[N_SIDES][BOARD_SIZE],
                 _b_doubled_pawn_area[N_SIDES][BOARD_SIZE],
                 _b_isolated_pawn_area[8], _b_file[8],
                 _b_king_zone[BOARD_SIZE],

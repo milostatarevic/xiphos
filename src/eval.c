@@ -24,7 +24,7 @@
 
 #define KING_PAWNS_SHIFT          3
 #define DISTANCE_BONUS_SHIFT      2
-#define BAD_PAWN_PENALTY          16
+#define DOUBLED_PAWN_PENALTY      16
 
 #define SAFE_CHECK_SHIFT          3
 #define K_SQ_ATTACK_SHIFT         1
@@ -49,6 +49,7 @@ const int m_shift_mid[N_PIECES] = { 0, 3, 3, 2, 1, 0 };
 const int m_shift_end[N_PIECES] = { 0, 2, 1, 3, 3, 0 };
 
 const int passer_bonus[8] = { 0, 0, 4, 10, 40, 70, 90, 0 };
+const int connected_bonus[8] = { 0, 1, 5, 12, 30, 65, 140, 0 };
 
 uint8_t distance[BOARD_SIZE][BOARD_SIZE];
 
@@ -63,8 +64,8 @@ void init_distance()
 
 phash_data_t eval_pawns(position_t *pos)
 {
-  int m, r, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end;
-  uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o, p_occ_x;
+  int m, r, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end, bonus;
+  uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o;
   phash_data_t phash_data;
 
   if (get_phash_data(pos, &phash_data))
@@ -104,13 +105,22 @@ phash_data_t eval_pawns(position_t *pos)
                                        (distance[ssq][k_sq_f] << (r - 1));
       }
 
-      // doubled / isolated pawns
-      p_occ_x = p_occ_f ^ _b(sq);
-      if ((_b_doubled_pawn_area[side][sq] & p_occ_x) ||
-          !(_b_isolated_pawn_area[_file(sq)] & p_occ_x))
+      // doubled pawns
+      if (_b_doubled_pawn_area[side][sq] & p_occ_f)
       {
-        score_mid -= BAD_PAWN_PENALTY;
-        score_end -= BAD_PAWN_PENALTY;
+        score_mid -= DOUBLED_PAWN_PENALTY;
+        score_end -= DOUBLED_PAWN_PENALTY;
+      }
+
+      // connected pawns
+      if (_b_connected_pawn_area[side][sq] & p_occ_f)
+      {
+        bonus = connected_bonus[r];
+        if (_b_doubled_pawn_area[side][sq] & p_occ_o)
+          bonus >>= 1;
+
+        score_mid += bonus;
+        score_end += bonus;
       }
     }
     score_end += d_max << DISTANCE_BONUS_SHIFT;
