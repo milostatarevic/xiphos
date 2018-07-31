@@ -77,7 +77,7 @@ void read_fen(search_data_t *sd, char *buf, int full_reset)
   int i, sq, side;
 
   if (full_reset)
-    full_reset_search_data(sd);
+    full_reset_search_data(sd, threads_search_data);
   else
     reset_search_data(sd);
 
@@ -321,6 +321,7 @@ void set_max_threads(int thread_cnt)
     (search_data_t *) realloc(
       threads_search_data, shared_search_info.max_threads * sizeof(search_data_t)
     );
+  reset_threads_search_data(threads_search_data);
   print("threads=%d\n", shared_search_info.max_threads);
 }
 

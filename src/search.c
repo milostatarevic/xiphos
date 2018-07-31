@@ -37,11 +37,9 @@
 #define LMP_DEPTH                     10
 #define SEE_DEPTH                     6
 #define LMR_DEPTH                     3
-#define LMR_SEARCHED_CNT              3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
 #define START_ASPIRATION_DEPTH        4
-#define MAX_HISTORY_DEPTH             16
 
 #define RAZOR_MARGIN                  200
 #define PROBCUT_MARGIN                80
@@ -51,6 +49,7 @@
 #define _futility_margin(depth)       (80 * (depth))
 #define _null_move_reduction(depth)   ((depth) / 4 + 3)
 #define _see_margin(depth)            (-100 * (depth))
+#define _h_score(depth)               (_sqr(_min(depth, 16)) * 32)
 
 pthread_mutex_t mutex;
 int lmr[MAX_DEPTH][MAX_MOVES];
@@ -200,7 +199,6 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   if (shared_search_info.done) return 0;
   if (!root_node && draw(sd)) return 0;
 
-  h_score = _sqr(_min(depth, MAX_HISTORY_DEPTH)) * 32;
   cmh_ptr = _counter_move_history_pointer(sd);
 
   // load hash data
@@ -229,10 +227,10 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
             {
               set_killer_move(sd, hash_move, ply);
               set_counter_move(sd, hash_move);
-              add_to_history(sd, cmh_ptr, hash_move, h_score);
+              add_to_history(sd, cmh_ptr, hash_move, _h_score(depth));
             }
             else if (hash_bound == HASH_UPPER_BOUND)
-              add_to_history(sd, cmh_ptr, hash_move, -h_score);
+              add_to_history(sd, cmh_ptr, hash_move, -_h_score(depth));
           }
           return hash_score;
         }
@@ -391,8 +389,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     {
       // LMR
       reduction = 0;
-      if (depth >= LMR_DEPTH && move_list.phase == QUIET_MOVES &&
-          searched_cnt >= LMR_SEARCHED_CNT)
+      if (depth >= LMR_DEPTH && move_list.phase == QUIET_MOVES)
       {
         reduction = lmr[depth][searched_cnt];
 
@@ -450,6 +447,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           // save history / killer / counter moves
           if (!pos->in_check && _m_is_quiet(best_move))
           {
+            h_score = _h_score(depth + (score > beta + 80));
+
             set_killer_move(sd, best_move, ply);
             set_counter_move(sd, best_move);
             add_to_history(sd, cmh_ptr, best_move, h_score);
@@ -539,19 +538,25 @@ void reset_search_data(search_data_t *sd)
   uint64_t hash_key;
 
   hash_key = sd->hash_keys[0];
-
   memset(sd, 0, sizeof(search_data_t));
-  sd->pos = sd->pos_list;
 
-  // restore hash key
+  sd->pos = sd->pos_list;
   sd->hash_key = hash_key;
-  sd->hash_keys[0] = hash_key;
 }
 
-void full_reset_search_data(search_data_t *sd)
+void reset_threads_search_data(search_data_t *threads_search_data)
+{
+  int t;
+
+  for (t = 0; t < shared_search_info.max_threads; t ++)
+    reset_search_data(&threads_search_data[t]);
+}
+
+void full_reset_search_data(search_data_t *sd, search_data_t *threads_search_data)
 {
   reset_search_data(sd);
   reset_hash_key(sd);
+  reset_threads_search_data(threads_search_data);
 }
 
 void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
@@ -559,12 +564,11 @@ void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
   sd->tid = t;
   sd->pos = sd->pos_list;
   position_cpy(sd->pos, src_sd->pos);
+  clear_killer_moves(sd);
 
   sd->hash_key = src_sd->hash_key;
   sd->hash_keys_cnt = src_sd->hash_keys_cnt;
-  memcpy(sd->hash_keys, src_sd->hash_keys, (src_sd->hash_keys_cnt + 1) * sizeof(uint64_t));
-
-  clear_history(sd);
+  memcpy(sd->hash_keys, src_sd->hash_keys, sizeof(sd->hash_keys));
 }
 
 void search(search_data_t *sd, search_data_t *threads_search_data)

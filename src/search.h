@@ -51,6 +51,7 @@ struct {
 void init_lmr();
 void search(search_data_t *, search_data_t *);
 void reset_search_data(search_data_t *);
-void full_reset_search_data(search_data_t *);
+void reset_threads_search_data(search_data_t *);
+void full_reset_search_data(search_data_t *, search_data_t *);
 
 #endif
