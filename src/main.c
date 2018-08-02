@@ -22,6 +22,7 @@
 #include "game.h"
 #include "hash.h"
 #include "make.h"
+#include "pawn_eval.h"
 #include "perft.h"
 #include "phash.h"
 #include "position.h"

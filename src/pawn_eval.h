@@ -16,17 +16,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EVAL_H
-#define EVAL_H
+#ifndef PAWN_EVAL_H
+#define PAWN_EVAL_H
 
-#include "game.h"
+#include "phash.h"
 #include "position.h"
 
-#define CASTLING_BONUS      20
-
-extern const int piece_value[N_PIECES];
-extern const int piece_phase[N_PIECES];
-
-int eval(position_t *);
+void init_distance();
+phash_data_t pawn_eval(position_t *);
 
 #endif

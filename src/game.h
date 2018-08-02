@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.3.8"
+#define VERSION                      "Xiphos 0.3.9"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
@@ -78,8 +78,8 @@
 enum { WHITE, BLACK, N_SIDES };
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, N_PIECES };
 
-enum { RANK_8, RANK_7, RANK_6, RANK_5, RANK_4, RANK_3, RANK_2, RANK_1 };
-enum { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H };
+enum { RANK_8, RANK_7, RANK_6, RANK_5, RANK_4, RANK_3, RANK_2, RANK_1, N_RANK };
+enum { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, N_FILE };
 
 enum {
   A8, B8, C8, D8, E8, F8, G8, H8,

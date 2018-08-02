@@ -17,14 +17,10 @@
 */
 
 #include "bitboard.h"
-#include "eval.h"
 #include "game.h"
+#include "pawn_eval.h"
 #include "phash.h"
 #include "position.h"
-
-#define KING_PAWNS_SHIFT          3
-#define DISTANCE_BONUS_SHIFT      2
-#define DOUBLED_PAWN_PENALTY      16
 
 #define SAFE_CHECK_SHIFT          3
 #define K_SQ_ATTACK_SHIFT         1
@@ -48,93 +44,6 @@ const int k_cnt_mul[K_CNT_LIMIT] = { 0, 2, 10, 16, 18, 20, 21, 22 };
 const int m_shift_mid[N_PIECES] = { 0, 3, 3, 2, 1, 0 };
 const int m_shift_end[N_PIECES] = { 0, 2, 1, 3, 3, 0 };
 
-const int passer_bonus[8] = { 0, 0, 4, 10, 40, 70, 90, 0 };
-const int connected_bonus[8] = { 0, 1, 5, 12, 30, 65, 140, 0 };
-
-uint8_t distance[BOARD_SIZE][BOARD_SIZE];
-
-void init_distance()
-{
-  int i, j;
-
-  for (i = 0; i < BOARD_SIZE; i ++)
-    for (j = 0; j < BOARD_SIZE; j ++)
-      distance[i][j] = _min(_max(_abs(_rank(i) - _rank(j)), _abs(_file(i) - _file(j))), 5);
-}
-
-phash_data_t eval_pawns(position_t *pos)
-{
-  int m, r, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end, bonus;
-  uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o;
-  phash_data_t phash_data;
-
-  if (get_phash_data(pos, &phash_data))
-    return phash_data;
-
-  pushed_passers = 0;
-  p_occ = pos->piece_occ[PAWN];
-  score_mid = score_end = 0;
-
-  for (side = WHITE; side < N_SIDES; side ++)
-  {
-    k_sq_f = pos->k_sq[side];
-    k_sq_o = pos->k_sq[side ^ 1];
-    p_occ_f = p_occ & pos->occ[side];
-    p_occ_o = p_occ & pos->occ[side ^ 1];
-
-    m = (side == WHITE) ? 7 : 0;
-    b = p_occ_f;
-    d_max = 0;
-
-    _loop(b)
-    {
-      sq = _bsf(b);
-      r = m ^ _rank(sq);
-      ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
-
-      // distance bonus
-      d = distance[ssq][k_sq_o] * r - distance[ssq][k_sq_f] * (r - 1);
-      if (d > d_max) d_max = d;
-
-      // passers
-      if (!(_b_passer_area[side][sq] & p_occ_o))
-      {
-        pushed_passers |= _b(ssq);
-        score_mid += passer_bonus[r];
-        score_end += passer_bonus[r] + (distance[ssq][k_sq_o] << r) -
-                                       (distance[ssq][k_sq_f] << (r - 1));
-      }
-
-      // doubled pawns
-      if (_b_doubled_pawn_area[side][sq] & p_occ_f)
-      {
-        score_mid -= DOUBLED_PAWN_PENALTY;
-        score_end -= DOUBLED_PAWN_PENALTY;
-      }
-
-      // connected pawns
-      if (_b_connected_pawn_area[side][sq] & p_occ_f)
-      {
-        bonus = connected_bonus[r];
-        if (_b_doubled_pawn_area[side][sq] & p_occ_o)
-          bonus >>= 1;
-
-        score_mid += bonus;
-        score_end += bonus;
-      }
-    }
-    score_end += d_max << DISTANCE_BONUS_SHIFT;
-
-    // pawns in the king zone
-    score_mid += _popcnt(_b_king_zone[k_sq_f] & p_occ_f) << KING_PAWNS_SHIFT;
-
-    score_mid = -score_mid;
-    score_end = -score_end;
-  }
-
-  return set_phash_data(pos, pushed_passers, score_mid, score_end);
-}
-
 int eval(position_t *pos)
 {
   int side, score, score_mid, score_end, pcnt, k_sq, sq,
@@ -145,7 +54,7 @@ int eval(position_t *pos)
            att_area[N_SIDES], att_area_nk[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
 
-  phash_data = eval_pawns(pos);
+  phash_data = pawn_eval(pos);
   score_mid = pos->score_mid + phash_data.score_mid;
   score_end = pos->score_end + phash_data.score_end;
 

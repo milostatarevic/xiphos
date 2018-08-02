@@ -43,7 +43,7 @@ uint64_t _b_piece_area[P_LIMIT][BOARD_SIZE],
          _b_passer_area[N_SIDES][BOARD_SIZE],
          _b_connected_pawn_area[N_SIDES][BOARD_SIZE],
          _b_doubled_pawn_area[N_SIDES][BOARD_SIZE],
-         _b_isolated_pawn_area[8], _b_file[8],
+         _b_isolated_pawn_area[N_FILE], _b_file[N_FILE],
          _b_king_zone[BOARD_SIZE],
          _b_line[BOARD_SIZE][BOARD_SIZE];
 
@@ -73,7 +73,7 @@ uint64_t _piece_attack(uint64_t occ, int piece, int sq)
     vr = v->r; vf = v->f;
     if (piece == (PAWN | CHANGE_SIDE)) vr = -vr;
     r = r_sq + vr; f = f_sq + vf;
-    while (r < 8 && f < 8)
+    while (r < N_RANK && f < N_FILE)
     {
       b_sq = _b(_sq_rf(r, f));
       b |= b_sq;
@@ -110,9 +110,9 @@ void init_pawn_boards()
       inc = side == WHITE ? -1 : 1;
       r = _rank(sq); f = _file(sq);
       for (fi = f - 1; fi <= f + 1; fi ++)
-        if (fi >= 0 && fi < 8)
+        if (fi >= 0 && fi < N_FILE)
         {
-          for (ri = r + inc; ri >= 0 && ri < 8; ri += inc)
+          for (ri = r + inc; ri >= 0 && ri < N_RANK; ri += inc)
           {
             b = _b(_sq_rf(ri, fi));
             bp |= b;
@@ -128,12 +128,12 @@ void init_pawn_boards()
       _b_connected_pawn_area[side][sq] = bc;
     }
 
-  for (f = 0; f < 8; f ++)
+  for (f = 0; f < N_FILE; f ++)
   {
     bi = bf = 0;
     for (fi = f - 1; fi <= f + 1; fi ++)
-      if (fi >= 0 && fi < 8)
-        for (r = 0; r < 8; r ++)
+      if (fi >= 0 && fi < N_FILE)
+        for (r = 0; r < N_RANK; r ++)
         {
           b = _b(_sq_rf(r, fi));
           bi |= b;
