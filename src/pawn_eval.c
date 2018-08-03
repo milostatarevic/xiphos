@@ -23,7 +23,9 @@
 
 #define KING_PAWNS_SHIFT        3
 #define DISTANCE_BONUS_SHIFT    2
-#define BAD_PAWN_PENALTY        16
+#define DOUBLED_PENALTY         16
+#define BACKWARD_PENALTY        12
+#define ISOLATED_PENALTY        8
 
 const int connected_bonus_mid[N_RANK] = { 0, 10, 15, 25, 40, 65, 110, 0 };
 const int connected_bonus_end[N_RANK] = { 0, 5, 5, 10, 25, 60, 110, 0 };
@@ -42,7 +44,7 @@ void init_distance()
 
 phash_data_t pawn_eval(position_t *pos)
 {
-  int m, r, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end, reduce;
+  int m, r, f, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end, reduce;
   uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o, p_occ_x;
   phash_data_t phash_data;
 
@@ -67,6 +69,7 @@ phash_data_t pawn_eval(position_t *pos)
     _loop(b)
     {
       sq = _bsf(b);
+      f = _file(sq);
       r = m ^ _rank(sq);
       ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
 
@@ -74,7 +77,7 @@ phash_data_t pawn_eval(position_t *pos)
       d = distance[ssq][k_sq_o] * r - distance[ssq][k_sq_f] * (r - 1);
       if (d > d_max) d_max = d;
 
-      // passers
+      // passer
       if (!(_b_passer_area[side][sq] & p_occ_o))
       {
         pushed_passers |= _b(ssq);
@@ -83,21 +86,37 @@ phash_data_t pawn_eval(position_t *pos)
                                        (distance[ssq][k_sq_f] << (r - 1));
       }
 
-      // doubled/isolated pawns
-      p_occ_x = p_occ_f ^ _b(sq);
-      if ((_b_doubled_pawn_area[side][sq] & p_occ_x) ||
-          !(_b_isolated_pawn_area[_file(sq)] & p_occ_x))
-      {
-        score_mid -= BAD_PAWN_PENALTY;
-        score_end -= BAD_PAWN_PENALTY;
-      }
-
-      // connected pawns
+      // connected pawn
       if (_b_connected_pawn_area[side][sq] & p_occ_f)
       {
         reduce = !!(_b_doubled_pawn_area[side][sq] & p_occ_o);
         score_mid += connected_bonus_mid[r] >> (reduce ? 1 : 0);
         score_end += connected_bonus_end[r] >> (reduce ? 1 : 0);
+      }
+      else {
+        p_occ_x = p_occ_f ^ _b(sq);
+
+        // doubled pawn
+        if (_b_doubled_pawn_area[side][sq] & p_occ_x)
+        {
+          score_mid -= DOUBLED_PENALTY / 2;
+          score_end -= DOUBLED_PENALTY;
+        }
+
+        // backward pawn
+        if (!(_b_passer_area[side ^ 1][ssq] & ~_b_file[f] & p_occ_x) &&
+            ((_b_piece_area[PAWN | (side << SIDE_SHIFT)][ssq] | _b(ssq)) & p_occ_o))
+        {
+          score_mid -= BACKWARD_PENALTY / 2;
+          score_end -= BACKWARD_PENALTY;
+        }
+
+        // isolated pawn
+        if (!(_b_isolated_pawn_area[f] & p_occ_x))
+        {
+          score_mid -= ISOLATED_PENALTY / 2;
+          score_end -= ISOLATED_PENALTY;
+        }
       }
     }
     score_end += d_max << DISTANCE_BONUS_SHIFT;
