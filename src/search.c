@@ -47,7 +47,6 @@
 #define MIN_HASH_DEPTH                -2
 
 #define _futility_margin(depth)       (80 * (depth))
-#define _null_move_reduction(depth)   ((depth) / 4 + 3)
 #define _see_margin(depth)            (-100 * (depth))
 #define _h_score(depth)               (_sqr(_min(depth, 16)) * 32)
 
@@ -285,9 +284,10 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         // null move
         if (depth >= 2 && best_score >= beta)
         {
+          reduction = (depth) / 4 + 3 + _min((best_score - beta) / 80, 3);
+
           make_null_move(sd);
-          score = -pvs(sd, 0, 0, -beta, -beta + 1,
-                       depth - _null_move_reduction(depth) - 1, ply + 1, 0, 0);
+          score = -pvs(sd, 0, 0, -beta, -beta + 1, depth - reduction, ply + 1, 0, 0);
           undo_move(sd);
 
           if (shared_search_info.done) return 0;
