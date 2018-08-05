@@ -35,7 +35,6 @@
 #define PROBCUT_DEPTH                 5
 #define IID_DEPTH                     5
 #define LMP_DEPTH                     10
-#define SEE_DEPTH                     6
 #define LMR_DEPTH                     3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
@@ -357,8 +356,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       }
 
       // prune bad captures
-      if (depth <= SEE_DEPTH && move_list.phase == BAD_CAPTURES &&
-          _m_score(move) < _see_margin(depth))
+      if (move_list.phase == BAD_CAPTURES && _m_score(move) < _see_margin(depth))
         continue;
     }
 

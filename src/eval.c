@@ -36,7 +36,7 @@
 #define TOTAL_PHASE               (1 << PHASE_SHIFT)
 #define TEMPO                     10
 
-const int piece_value[N_PIECES] = { 100, 310, 330, 500, 950, 20000 };
+const int piece_value[N_PIECES] = { 100, 310, 330, 500, 1000, 20000 };
 const int piece_phase[N_PIECES] = { 0, 6, 6, 13, 28, 0 };
 
 const int k_cnt_mul[K_CNT_LIMIT] = { 0, 2, 10, 16, 18, 20, 21, 22 };
