@@ -29,6 +29,7 @@
 #define PAWN_THREAT_SHIFT         6
 #define PUSHED_PAWN_THREAT_SHIFT  4
 #define PAWN_MOBILITY_SHIFT       2
+#define PAWN_ATTACK_SHIFT         1
 #define BISHOP_PAIR_BONUS         40
 #define K_CNT_LIMIT               8
 
@@ -48,9 +49,9 @@ int eval(position_t *pos)
 {
   int side, score, score_mid, score_end, pcnt, k_sq, sq,
       k_score[N_SIDES], k_cnt[N_SIDES];
-  uint64_t b, b0, k_zone, occ, r_occ, occ_f, occ_o, occ_o_np, occ_x, n_occ,
+  uint64_t b, b0, k_zone, occ, occ_f, occ_o, occ_o_np, occ_x, n_occ,
            p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att, pushed_passers,
-           p_att[N_SIDES], p_pushed[N_SIDES],
+           p_pushed_safe, p_pushed[N_SIDES], p_att[N_SIDES],
            att_area[N_SIDES], att_area_nk[N_SIDES], checks[N_SIDES];
   phash_data_t phash_data;
 
@@ -60,14 +61,13 @@ int eval(position_t *pos)
 
   p_occ = pos->piece_occ[PAWN];
   occ = pos->occ[WHITE] | pos->occ[BLACK];
-  r_occ = ~occ;
   pushed_passers = phash_data.pushed_passers;
 
   for (side = WHITE; side < N_SIDES; side ++)
   {
     p_occ_f = p_occ & pos->occ[side];
     p_att[side] = pawn_attacks(p_occ_f, side);
-    p_pushed[side] = pushed_pawns(p_occ_f, r_occ, side);
+    p_pushed[side] = pushed_pawns(p_occ_f, ~occ, side);
   }
 
   for (side = WHITE; side < N_SIDES; side ++)
@@ -174,6 +174,18 @@ int eval(position_t *pos)
   // use precalculated attacks (a separate loop is required)
   for (side = WHITE; side < N_SIDES; side ++)
   {
+    p_pushed_safe = p_pushed[side] & (att_area[side] | ~att_area[side ^ 1]);
+
+    // pawn mobility
+    score_end += _popcnt(p_pushed_safe) << PAWN_MOBILITY_SHIFT;
+
+    // pawn attacks on the king zone
+    if ((b = p_pushed_safe & _b_king_zone[pos->k_sq[side ^ 1]]))
+    {
+      k_score[side] += _popcnt(b) << PAWN_ATTACK_SHIFT;
+      k_cnt[side] ++;
+    }
+
     // bonus for safe checks
     if ((b = checks[side] & ~att_area[side ^ 1]))
     {
@@ -188,11 +200,6 @@ int eval(position_t *pos)
 
     // scale king safety
     score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
-
-    // pawn mobility
-    score_end += _popcnt(
-      p_pushed[side] & r_occ & (att_area[side] | ~att_area[side ^ 1])
-    ) << PAWN_MOBILITY_SHIFT;
 
     score_mid = -score_mid;
     score_end = -score_end;
