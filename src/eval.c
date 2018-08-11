@@ -42,8 +42,8 @@ const int piece_phase[N_PIECES] = { 0, 6, 6, 13, 28, 0 };
 
 const int k_cnt_mul[K_CNT_LIMIT] = { 0, 2, 10, 16, 18, 20, 21, 22 };
 
-const int m_shift_mid[N_PIECES] = { 0, 3, 3, 2, 1, 0 };
-const int m_shift_end[N_PIECES] = { 0, 2, 1, 3, 3, 0 };
+const int m_mul_mid[N_PIECES] = { 0, 8, 6, 3, 2, 0 };
+const int m_mul_end[N_PIECES] = { 0, 4, 3, 6, 5, 0 };
 
 int eval(position_t *pos)
 {
@@ -121,8 +121,8 @@ int eval(position_t *pos)
           additional_computation                                               \
         }                                                                      \
         /* mobility */                                                         \
-        score_mid += pcnt << m_shift_mid[piece];                               \
-        score_end += pcnt << m_shift_end[piece];                               \
+        score_mid += pcnt * m_mul_mid[piece];                                  \
+        score_end += pcnt * m_mul_end[piece];                                  \
       }
 
     occ_x = occ ^ pos->piece_occ[QUEEN];
