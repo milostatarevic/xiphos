@@ -16,12 +16,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
 #include <time.h>
 
 #include "position.h"
+#include "util.h"
 
 uint64_t time_in_ms()
 {
@@ -36,36 +34,6 @@ void sleep_ms(int sleep_in_ms)
   t.tv_sec = sleep_in_ms / 1000;
   t.tv_nsec = (sleep_in_ms % 1000) * 1000000;
   nanosleep(&t, NULL);
-}
-
-void print(const char* format, ...)
-{
-  char dest[256];
-
-  va_list args;
-  va_start(args, format);
-  vsprintf(dest, format, args);
-  va_end(args);
-
-  fputs(dest, stdout);
-  fflush(stdout);
-
-#ifdef _SAVE_LOG
-  FILE *f_out;
-
-  f_out = fopen("output.log", "a");
-  fputs(dest, f_out);
-  fclose(f_out);
-#endif
-}
-
-void write_input_log(char *buf)
-{
-  FILE *f;
-
-  f = fopen("input.log", "a");
-  fputs(buf, f);
-  fclose(f);
 }
 
 char *m_to_str(move_t move)
@@ -113,7 +81,7 @@ void print_board(position_t *pos)
   const char display_pieces[N_PIECES] = { 'P', 'N', 'B', 'R', 'Q', 'K' };
   int i, piece, display_piece;
 
-  print("\n");
+  _p("\n");
   for (i = 0; i < BOARD_SIZE; i ++)
   {
     piece = pos->board[i];
@@ -126,8 +94,8 @@ void print_board(position_t *pos)
         display_piece += 32;
     }
 
-    print(" %c", display_piece);
-    if((i & 7) == 7) print("\n");
+    _p(" %c", display_piece);
+    if((i & 7) == 7) _p("\n");
   }
-  print("\n a b c d e f g h \n\n");
+  _p("\n a b c d e f g h \n\n");
 }

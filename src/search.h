@@ -19,6 +19,8 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
+#include <pthread.h>
+
 #include "move.h"
 #include "position.h"
 #include "util.h"
@@ -39,19 +41,23 @@ typedef struct {
 } search_data_t;
 
 struct {
-  int max_threads, max_depth, done, score, depth, best_move_cnt,
-      search_depth_cnt[MAX_DEPTH];
-  move_t best_move;
+  int max_depth, done, search_finished, score, depth, tm_steps;
   uint64_t time_in_ms, max_time, target_time[TM_STEPS];
   struct {
-    int time, inc, movestogo, depth, movetime;
+    int infinite, ponder, time, inc, movestogo, depth, movetime;
   } go;
-} shared_search_info;
+} search_status;
+
+struct {
+  int max_threads, ponder_mode;
+  search_data_t *sd, *threads_search_data;
+  pthread_mutex_t mutex;
+} search_settings;
 
 void init_lmr();
-void search(search_data_t *, search_data_t *);
 void reset_search_data(search_data_t *);
-void reset_threads_search_data(search_data_t *);
-void full_reset_search_data(search_data_t *, search_data_t *);
+void reset_threads_search_data();
+void full_reset_search_data();
+void *search();
 
 #endif

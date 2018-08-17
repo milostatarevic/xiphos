@@ -19,12 +19,14 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <stdio.h>
+#include <string.h>
 #include "move.h"
+
+#define _p printf
 
 uint64_t time_in_ms();
 void sleep_ms(int);
-void print(const char *, ...);
-void write_input_log(char *);
 char *m_to_str(move_t);
 move_t str_to_m(char *);
 void print_board();

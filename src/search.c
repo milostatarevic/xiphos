@@ -17,7 +17,6 @@
 */
 
 #include <math.h>
-#include <pthread.h>
 #include <string.h>
 
 #include "eval.h"
@@ -49,12 +48,14 @@
 #define _see_margin(depth)            (-100 * (depth))
 #define _h_score(depth)               (_sqr(_min(depth, 16)) * 32)
 
-pthread_mutex_t mutex;
-int lmr[MAX_DEPTH][MAX_MOVES];
-int lmp[][LMP_DEPTH + 1] = {
+const int lmp[][LMP_DEPTH + 1] = {
   { 0, 3, 4, 6, 10, 15, 21, 28, 36, 45, 55 },
   { 0, 5, 6, 9, 15, 23, 32, 42, 54, 68, 83 }
 };
+
+int lmr[MAX_DEPTH][MAX_MOVES];
+int shared_search_depth_cnt[MAX_DEPTH];
+move_t pv[PLY_LIMIT * PLY_LIMIT];
 
 void init_lmr()
 {
@@ -80,6 +81,17 @@ static inline int draw(search_data_t *sd)
     if (sd->hash_keys[i] == sd->hash_key)
       return 1;
   return 0;
+}
+
+void update_pv(move_t move, int ply)
+{
+  move_t *dest, *src;
+
+  dest = pv + ply * PLY_LIMIT;
+  src = dest + PLY_LIMIT;
+
+  *dest++ = move;
+  while ((*dest++ = *src++));
 }
 
 int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int ply)
@@ -194,7 +206,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   pos = sd->pos;
   if (ply >= MAX_PLY) return eval(pos);
 
-  if (shared_search_info.done) return 0;
+  if (search_status.done) return 0;
   if (!root_node && draw(sd)) return 0;
 
   cmh_ptr = _counter_move_history_pointer(sd);
@@ -289,7 +301,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           score = -pvs(sd, 0, 0, -beta, -beta + 1, depth - reduction, ply + 1, 0, 0);
           undo_move(sd);
 
-          if (shared_search_info.done) return 0;
+          if (search_status.done) return 0;
           if (score >= beta)
             return _is_mate_score(score) ? beta : score;
         }
@@ -380,6 +392,9 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     make_move(sd, move);
     searched_cnt ++;
 
+    if (sd->tid == 0 && pv_node)
+      pv[(ply + 1) * PLY_LIMIT] = 0;
+
     // search
     if (searched_cnt == 1)
       score = -pvs(sd, 0, pv_node, -beta, -alpha, new_depth, ply + 1, 1, 0);
@@ -411,7 +426,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     }
     undo_move(sd);
 
-    if (shared_search_info.done)
+    if (search_status.done)
       return 0;
 
     if (score > best_score)
@@ -420,20 +435,23 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       if (score > alpha)
       {
         best_move = move;
-        if (ply == 0 && sd->tid == 0)
-        {
-          if (_m_eq(best_move, shared_search_info.best_move))
-          {
-            if (shared_search_info.best_move_cnt > 0)
-              shared_search_info.best_move_cnt --;
-          }
-          else
-            shared_search_info.best_move_cnt = TM_STEPS - 1;
 
-          shared_search_info.score = score;
-          shared_search_info.depth = depth;
-          shared_search_info.best_move = move;
-          uci_info();
+        if (sd->tid == 0 && pv_node)
+        {
+          if (root_node)
+          {
+            if (_m_eq(best_move, pv[0]))
+            {
+              if (search_status.tm_steps > 0)
+                search_status.tm_steps --;
+            }
+            else
+              search_status.tm_steps = TM_STEPS - 1;
+
+            search_status.score = score;
+            search_status.depth = depth;
+          }
+          update_pv(move, ply);
         }
 
         alpha = score;
@@ -484,14 +502,14 @@ void *search_thread(void *thread_data)
   sd->nodes = 0;
 
   score = 0;
-  for (depth = 1; depth <= shared_search_info.max_depth; depth ++)
+  for (depth = 1; depth <= search_status.max_depth; depth ++)
   {
-    pthread_mutex_lock(&mutex);
-    search_depth_cnt = ++shared_search_info.search_depth_cnt[depth];
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_lock(&search_settings.mutex);
+    search_depth_cnt = ++shared_search_depth_cnt[depth];
+    pthread_mutex_unlock(&search_settings.mutex);
 
-    if (sd->tid && depth > 1 && depth < shared_search_info.max_depth &&
-        search_depth_cnt > _max((shared_search_info.max_threads + 1) / 2, 2))
+    if (sd->tid && depth > 1 && depth < search_status.max_depth &&
+        search_depth_cnt > _max((search_settings.max_threads + 1) / 2, 2))
       continue;
 
     delta = (depth >= START_ASPIRATION_DEPTH) ? INIT_ASPIRATION_WINDOW : MATE_SCORE;
@@ -501,7 +519,7 @@ void *search_thread(void *thread_data)
     while (delta <= MATE_SCORE)
     {
       score = pvs(sd, 1, 1, alpha, beta, depth, 0, 0, 0);
-      if (shared_search_info.done) break;
+      if (search_status.done) break;
 
       delta += 2 + delta / 2;
       if (score <= alpha)
@@ -511,24 +529,63 @@ void *search_thread(void *thread_data)
       else
         break;
     }
-    if (shared_search_info.done) break;
+    if (search_status.done) break;
 
-    target_time =
-      shared_search_info.target_time[shared_search_info.best_move_cnt];
+    if (sd->tid == 0)
+    {
+      uci_info(pv);
 
-    if (target_time > 0 && sd->tid == 0 && depth >= MIN_DEPTH_TO_REACH &&
-        time_in_ms() - shared_search_info.time_in_ms >= target_time)
-      break;
+      target_time =
+        search_status.target_time[search_status.tm_steps];
+
+      if (!search_status.go.ponder &&
+           target_time > 0 && depth >= MIN_DEPTH_TO_REACH &&
+           time_in_ms() - search_status.time_in_ms >= target_time)
+        break;
+    }
   }
 
   if (sd->tid == 0)
   {
-    pthread_mutex_lock(&mutex);
-    shared_search_info.done = 1;
-    pthread_mutex_unlock(&mutex);
+    uci_info(pv);
+
+    pthread_mutex_lock(&search_settings.mutex);
+    search_status.search_finished = 1;
+    if (!search_status.go.ponder)
+      search_status.done = 1;
+    pthread_mutex_unlock(&search_settings.mutex);
   }
 
   pthread_exit(NULL);
+}
+
+void print_best_move(search_data_t *sd)
+{
+  move_t best_move, ponder_move;
+  hash_data_t hash_data;
+
+  best_move = pv[0];
+  ponder_move = pv[1];
+
+  if (!_is_m(ponder_move))
+  {
+    make_move(sd, best_move);
+
+    hash_data = get_hash_data(sd);
+    if (hash_data.raw)
+    {
+      ponder_move = hash_data.move;
+      if (!_is_m(ponder_move) || !legal_move(sd->pos, ponder_move))
+        ponder_move = 0;
+    }
+
+    undo_move(sd);
+  }
+
+  _p("bestmove %s", m_to_str(best_move));
+  if (_is_m(ponder_move))
+    _p(" ponder %s", m_to_str(ponder_move));
+  _p("\n");
 }
 
 void reset_search_data(search_data_t *sd)
@@ -542,19 +599,19 @@ void reset_search_data(search_data_t *sd)
   sd->hash_key = hash_key;
 }
 
-void reset_threads_search_data(search_data_t *threads_search_data)
+void reset_threads_search_data()
 {
   int t;
 
-  for (t = 0; t < shared_search_info.max_threads; t ++)
-    reset_search_data(&threads_search_data[t]);
+  for (t = 0; t < search_settings.max_threads; t ++)
+    reset_search_data(&search_settings.threads_search_data[t]);
 }
 
-void full_reset_search_data(search_data_t *sd, search_data_t *threads_search_data)
+void full_reset_search_data()
 {
-  reset_search_data(sd);
-  reset_hash_key(sd);
-  reset_threads_search_data(threads_search_data);
+  reset_search_data(search_settings.sd);
+  reset_hash_key(search_settings.sd);
+  reset_threads_search_data(search_settings.threads_search_data);
 }
 
 void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
@@ -562,51 +619,51 @@ void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
   sd->tid = t;
   sd->pos = sd->pos_list;
   position_cpy(sd->pos, src_sd->pos);
-  clear_killer_moves(sd);
 
   sd->hash_key = src_sd->hash_key;
   sd->hash_keys_cnt = src_sd->hash_keys_cnt;
   memcpy(sd->hash_keys, src_sd->hash_keys, sizeof(sd->hash_keys));
+
+  clear_killer_moves(sd);
 }
 
-void search(search_data_t *sd, search_data_t *threads_search_data)
+void *search()
 {
   int t;
-  pthread_attr_t attr;
   pthread_t threads[MAX_THREADS];
 
-  shared_search_info.best_move_cnt = 0;
-  shared_search_info.time_in_ms = time_in_ms();
+  search_status.tm_steps = 0;
+  search_status.time_in_ms = time_in_ms();
 
   set_hash_iteration();
-  reevaluate_position(sd->pos);
+  reevaluate_position(search_settings.sd->pos);
+
+  memset(pv, 0, sizeof(pv));
+  memset(shared_search_depth_cnt, 0, sizeof(shared_search_depth_cnt));
 
   // launch search threads
-  pthread_mutex_init(&mutex, NULL);
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-  for (t = 0; t < shared_search_info.max_threads; t ++)
+  for (t = 0; t < search_settings.max_threads; t ++)
   {
-    init_search_data(&threads_search_data[t], sd, t);
-    pthread_create(&threads[t], &attr, search_thread, (void *) &threads_search_data[t]);
+    init_search_data(&search_settings.threads_search_data[t], search_settings.sd, t);
+    pthread_create(&threads[t], NULL, search_thread, (void *) &search_settings.threads_search_data[t]);
   }
 
-  while (!shared_search_info.done)
+  while (!search_status.done)
   {
-    pthread_mutex_lock(&mutex);
-    if (time_in_ms() - shared_search_info.time_in_ms >= shared_search_info.max_time &&
-        shared_search_info.depth >= MIN_DEPTH_TO_REACH)
-      shared_search_info.done = 1;
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_lock(&search_settings.mutex);
+    if (!search_status.go.infinite &&
+        !search_status.go.ponder &&
+        time_in_ms() - search_status.time_in_ms >= search_status.max_time &&
+        search_status.depth >= MIN_DEPTH_TO_REACH)
+      search_status.done = 1;
+    pthread_mutex_unlock(&search_settings.mutex);
+
     sleep_ms(2);
   }
 
-  pthread_attr_destroy(&attr);
-  for (t = 0; t < shared_search_info.max_threads; t ++)
+  for (t = 0; t < search_settings.max_threads; t ++)
     pthread_join(threads[t], NULL);
-  pthread_mutex_destroy(&mutex);
 
-  uci_info();
-  print("bestmove %s\n", m_to_str(shared_search_info.best_move));
+  print_best_move(search_settings.sd);
+  pthread_exit(NULL);
 }

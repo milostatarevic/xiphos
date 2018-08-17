@@ -164,23 +164,24 @@ uint64_t perft(search_data_t *sd, int depth, int ply, int additional_tests)
   return nodes;
 }
 
-void run_tests(search_data_t *sd)
+void run_tests()
 {
   int i, errors;
   uint64_t nodes;
+  search_data_t sd;
 
   errors = 0;
   for (i = 0; i < sizeof(tests) / sizeof(test_t); i ++)
   {
-    read_fen(sd, tests[i].fen, 1);
-    nodes = perft(sd, tests[i].depth, 0, 1);
+    read_fen(&sd, tests[i].fen);
+    nodes = perft(&sd, tests[i].depth, 0, 1);
     if (nodes != tests[i].nodes)
     {
-      print("E");
+      _p("E");
       errors ++;
     }
     else
-      print(".");
+      _p(".");
   }
-  print("\nerrors: %d\n", errors);
+  _p("\nerrors: %d\n", errors);
 }

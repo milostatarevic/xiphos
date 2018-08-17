@@ -28,9 +28,11 @@
 #include "search.h"
 
 #define CMD_UCI                     "uci\n"
-#define CMD_READY                   "isready"
-#define CMD_QUIT                    "quit"
 #define CMD_GO                      "go"
+#define CMD_QUIT                    "quit"
+#define CMD_STOP                    "stop"
+#define CMD_READY                   "isready"
+#define CMD_PONDERHIT               "ponderhit"
 #define CMD_NEW_GAME                "ucinewgame"
 #define CMD_POSITION_FEN            "position fen"
 #define CMD_POSITION_STARTPOS       "position startpos"
@@ -41,19 +43,35 @@
 
 #define OPTION_HASH                 "setoption name Hash value"
 #define OPTION_THREADS              "setoption name Threads value"
+#define OPTION_PONDER               "setoption name Ponder value"
 
 #define MAX_REDUCE_TIME             1000
-#define REDUCE_TIME                 80
+#define REDUCE_TIME                 150
 #define REDUCE_TIME_PERCENT         5
 #define MAX_TIME_MOVES_TO_GO        3
 #define MIN_TIME_RATIO              0.5
 #define MAX_TIME_RATIO              1.2
 
 #define MAX_MOVES_TO_GO             25
+#define BUFFER_LINE_SIZE            256
 #define READ_BUFFER_SIZE            65536
 
-search_data_t *threads_search_data;
 char initial_fen[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+
+int starts_with(char *buf, const char *str)
+{
+  return !strncmp(buf, str, strlen(str));
+}
+
+int _cmd_cmp(char **buf, const char *cmd_str)
+{
+  if(starts_with(*buf, cmd_str))
+  {
+    *buf += strlen(cmd_str) + 1;
+    return 1;
+  }
+  return 0;
+}
 
 void set_piece(position_t *pos, int piece, int sq)
 {
@@ -70,17 +88,13 @@ void set_piece(position_t *pos, int piece, int sq)
     pos->piece_occ[w_piece] |= _b(sq);
 }
 
-void read_fen(search_data_t *sd, char *buf, int full_reset)
+void read_fen(search_data_t *sd, char *buf)
 {
   position_t *pos;
   char c, *moves_buf;
   int i, sq, side;
 
-  if (full_reset)
-    full_reset_search_data(sd, threads_search_data);
-  else
-    reset_search_data(sd);
-
+  reset_search_data(sd);
   pos = sd->pos;
 
   for(i = 0; i < BOARD_SIZE; i ++)
@@ -154,32 +168,28 @@ void read_fen(search_data_t *sd, char *buf, int full_reset)
     }
 }
 
-void uci_position_startpos(search_data_t *sd, char *buf)
+void uci_position_startpos(char *buf)
 {
-  read_fen(sd, initial_fen, 0);
+  read_fen(search_settings.sd, initial_fen);
   buf = strstr(buf, "moves");
   if(buf == NULL) return;
 
   while ((buf = strchr(buf, ' ')))
   {
     while (*buf == ' ') buf++;
-    make_move_rev(sd, str_to_m(buf));
+    make_move_rev(search_settings.sd, str_to_m(buf));
   }
 }
 
-void uci_go(search_data_t *sd, char *buf)
+void parse_go_cmd(char *buf)
 {
-  int i, max_threads, max_time_allowed, target_time, max_time, reduce_time, moves_to_go;
+  int i, max_time_allowed, target_time, max_time, reduce_time, moves_to_go;
   double ratio;
   char *t;
   position_t *pos;
 
-  pos = sd->pos;
-
-  // TODO fix
-  max_threads = shared_search_info.max_threads;
-  memset(&shared_search_info, 0, sizeof(shared_search_info));
-  shared_search_info.max_threads = max_threads;
+  pos = search_settings.sd->pos;
+  memset(&search_status, 0, sizeof(search_status));
 
   for (t = strtok(buf, " "); t; t = strtok(NULL, " "))
   {
@@ -187,75 +197,87 @@ void uci_go(search_data_t *sd, char *buf)
         (!strcmp(t, "btime") && pos->side == BLACK))
     {
       t = strtok(NULL, " ");
-      shared_search_info.go.time = atoi(t);
+      search_status.go.time = atoi(t);
     }
     if ((!strcmp(t, "winc") && pos->side == WHITE) ||
         (!strcmp(t, "binc") && pos->side == BLACK))
     {
       t = strtok(NULL, " ");
-      shared_search_info.go.inc = atoi(t);
+      search_status.go.inc = atoi(t);
     }
     else if (!strcmp(t, "movestogo"))
     {
       t = strtok(NULL, " ");
-      shared_search_info.go.movestogo = atoi(t);
+      search_status.go.movestogo = atoi(t);
     }
     else if (!strcmp(t, "depth"))
     {
       t = strtok(NULL, " ");
-      shared_search_info.go.depth = atoi(t);
+      search_status.go.depth = atoi(t);
+    }
+    else if (starts_with(buf, "ponder"))
+    {
+      search_status.go.ponder = 1;
+    }
+    else if (starts_with(buf, "infinite"))
+    {
+      search_status.go.infinite = 1;
     }
     else if (!strcmp(t, "movetime"))
     {
       t = strtok(NULL, " ");
-      shared_search_info.go.movetime = atoi(t);
+      search_status.go.movetime = atoi(t);
     }
   }
 
-  shared_search_info.max_depth = MAX_DEPTH - 1;
+  search_status.max_time = (1 << 30);
+  search_status.max_depth = MAX_DEPTH - 1;
 
-  if (shared_search_info.go.depth > 0)
+  if (search_status.go.infinite)
+    ;
+  else if (search_status.go.depth > 0)
   {
-    shared_search_info.max_time = (1 << 30);
-    shared_search_info.max_depth =
-      _min(shared_search_info.go.depth, shared_search_info.max_depth);
+    search_status.max_depth =
+      _min(search_status.go.depth, search_status.max_depth);
   }
   else
   {
-    if (shared_search_info.go.movetime > 0)
-      shared_search_info.max_time =
-        _max(shared_search_info.go.movetime - REDUCE_TIME, 1);
+    if (search_status.go.movetime > 0)
+      search_status.max_time =
+        _max(search_status.go.movetime - REDUCE_TIME, 1);
     else
     {
-      moves_to_go = _min(shared_search_info.go.movestogo, MAX_MOVES_TO_GO);
+      moves_to_go = _min(search_status.go.movestogo, MAX_MOVES_TO_GO);
       if (moves_to_go == 0)
         moves_to_go = MAX_MOVES_TO_GO;
 
       reduce_time = _min(
-        shared_search_info.go.time * REDUCE_TIME_PERCENT / 100, MAX_REDUCE_TIME
+        search_status.go.time * REDUCE_TIME_PERCENT / 100, MAX_REDUCE_TIME
       ) + REDUCE_TIME;
-      max_time_allowed = _max(shared_search_info.go.time - reduce_time, 1);
+      max_time_allowed = _max(search_status.go.time - reduce_time, 1);
 
-      target_time = max_time_allowed / moves_to_go + shared_search_info.go.inc;
+      target_time = max_time_allowed / moves_to_go + search_status.go.inc;
       for (i = 0; i < TM_STEPS; i ++)
       {
         ratio = MIN_TIME_RATIO +
                 i * (MAX_TIME_RATIO - MIN_TIME_RATIO) / (TM_STEPS - 1);
-        shared_search_info.target_time[i] =
+
+        if (search_settings.ponder_mode)
+          ratio *= 1.25;
+
+        search_status.target_time[i] =
           _min(ratio * target_time, max_time_allowed);
       }
 
       max_time =
         max_time_allowed / _min(moves_to_go, MAX_TIME_MOVES_TO_GO) +
-        shared_search_info.go.inc;
-      shared_search_info.max_time = _min(max_time, max_time_allowed);
+        search_status.go.inc;
+      search_status.max_time = _min(max_time, max_time_allowed);
     }
   }
-
-  search(sd, threads_search_data);
 }
 
-void uci_perft(search_data_t *sd, char *buf)
+void uci_perft(char *buf)
 {
   int depth;
   uint64_t nodes, time_ms;
@@ -263,46 +285,53 @@ void uci_perft(search_data_t *sd, char *buf)
   depth = strlen(buf) ? atoi(buf) : 0;
   if (depth < 1)
   {
-    print("specify depth\n");
+    _p("specify depth\n");
     return;
   }
 
   time_ms = time_in_ms();
-  nodes = perft(sd, depth, 0, 0);
+  nodes = perft(search_settings.sd, depth, 0, 0);
 
   time_ms = time_in_ms() - time_ms;
-  print("perft(%d)=%"PRIu64", time: %"PRIu64"ms, "
-        "nps: %"PRIu64" (no hashing, bulk counting)\n",
-        depth, nodes, time_ms, nodes * 1000 / (time_ms + 1));
+  _p("perft(%d)=%"PRIu64", time: %"PRIu64"ms, nps: %"PRIu64" (no hashing, bulk counting)\n",
+      depth, nodes, time_ms, nodes * 1000 / (time_ms + 1));
 }
 
-void uci_info()
+void uci_info(move_t *pv)
 {
-  int i, elapsed_time, score;
-  char score_string[64];
-  uint64_t nodes;
+  int i, score;
+  char buf[BUFFER_LINE_SIZE], pv_string[PLY_LIMIT * 8];
+  uint64_t nodes, elapsed_time;
 
-  score = shared_search_info.score;
+  score = search_status.score;
   if (_is_mate_score(score))
-    sprintf(score_string, "mate %d",
+    sprintf(buf, "mate %d",
             (MATE_SCORE - _abs(score)) / 2 * ((score >= 0) ? 1 : -1));
   else
-    sprintf(score_string, "cp %d", score);
+    sprintf(buf, "cp %d", score);
 
   nodes = 0;
-  for (i = 0; i < shared_search_info.max_threads; i ++)
-    nodes += threads_search_data[i].nodes;
+  for (i = 0; i < search_settings.max_threads; i ++)
+    nodes += search_settings.threads_search_data[i].nodes;
 
-  elapsed_time = time_in_ms() - shared_search_info.time_in_ms;
+  elapsed_time = time_in_ms() - search_status.time_in_ms;
 
-  print("info depth %d score %s nodes %"PRIu64" time %d nps %d ",
-        shared_search_info.depth, score_string, nodes, elapsed_time,
-        1000ULL * nodes / (elapsed_time + 1));
+  _p("info depth %d score %s nodes %"PRIu64" time %"PRIu64" nps %"PRIu64" ",
+      search_status.depth, buf, nodes, elapsed_time,
+      nodes * UINT64_C(1000) / (elapsed_time + 1));
 
-  print("pv %s\n", m_to_str(shared_search_info.best_move));
+  sprintf(pv_string, "pv ");
+  for (; *pv; pv ++)
+  {
+    sprintf(buf, "%s ", m_to_str(*pv));
+    strcat(pv_string, buf);
+  }
+  strcat(pv_string, "\n");
+
+  _p(pv_string);
 }
 
-void set_hash_size(search_data_t *sd, int hash_size_in_mb)
+void set_hash_size(int hash_size_in_mb)
 {
   uint64_t allocated_memory;
 
@@ -310,100 +339,131 @@ void set_hash_size(search_data_t *sd, int hash_size_in_mb)
     return;
 
   allocated_memory = init_hash(hash_size_in_mb);
-  reset_hash_key(sd);
-  print("hash=%dMB\n", allocated_memory >> 20);
+  reset_hash_key(search_settings.sd);
+  _p("hash=%"PRIu64"MB\n", allocated_memory >> 20);
 }
 
 void set_max_threads(int thread_cnt)
 {
-  shared_search_info.max_threads = _max(_min(thread_cnt, MAX_THREADS), 1);
-  threads_search_data =
+  search_settings.max_threads = _max(_min(thread_cnt, MAX_THREADS), 1);
+  search_settings.threads_search_data =
     (search_data_t *) realloc(
-      threads_search_data, shared_search_info.max_threads * sizeof(search_data_t)
+      search_settings.threads_search_data, search_settings.max_threads * sizeof(search_data_t)
     );
-  reset_threads_search_data(threads_search_data);
-  print("threads=%d\n", shared_search_info.max_threads);
+  reset_threads_search_data();
+  _p("threads=%d\n", search_settings.max_threads);
 }
 
-int _cmd_cmp(char **buf, const char *cmd_str)
+void set_ponder(char *buf)
 {
-  if(!strncmp(*buf, cmd_str, strlen(cmd_str)))
-  {
-    *buf += strlen(cmd_str) + 1;
-    return 1;
-  }
-  return 0;
+  search_settings.ponder_mode = starts_with(buf, "true");
+  _p("ponder=%d\n", search_settings.ponder_mode);
 }
 
 void uci()
 {
-  search_data_t *sd;
+  pthread_t main_search_thread;
   char *buf, input_buf[READ_BUFFER_SIZE];
 
-  print("%s %s by %s\n", VERSION, ARCH, AUTHOR);
+  _p("%s %s by %s\n", VERSION, ARCH, AUTHOR);
 
-  sd = (search_data_t *) malloc(sizeof(search_data_t));
+  search_settings.sd = (search_data_t *) malloc(sizeof(search_data_t));
+  search_settings.threads_search_data = NULL;
+  pthread_mutex_init(&search_settings.mutex, NULL);
 
-  threads_search_data = NULL;
   set_max_threads(DEFAULT_THREADS);
-  set_hash_size(sd, DEFAULT_HASH_SIZE_IN_MB);
+  set_hash_size(DEFAULT_HASH_SIZE_IN_MB);
+  search_settings.ponder_mode = 0;
 
-  read_fen(sd, initial_fen, 1);
+  full_reset_search_data();
+  read_fen(search_settings.sd, initial_fen);
+
   setbuf(stdout, NULL);
 
   while(1)
   {
     if (fgets(input_buf, READ_BUFFER_SIZE, stdin) == NULL)
     {
-      sleep_ms(10);
+      sleep_ms(2);
       continue;
     }
 
-#ifdef _SAVE_LOG
-    write_input_log(input_buf);
-#endif
-
     buf = input_buf;
+
     if (_cmd_cmp(&buf, CMD_UCI))
     {
-      print("id name %s %s\n", VERSION, ARCH);
-      print("id author %s\n", AUTHOR);
-      print("option name Hash type spin default %d min 1 max 32768\n", DEFAULT_HASH_SIZE_IN_MB);
-      print("option name Threads type spin default 1 min 1 max %d\n", MAX_THREADS);
-      print("uciok\n");
+      _p("id name %s %s\n", VERSION, ARCH);
+      _p("id author %s\n", AUTHOR);
+      _p("option name Hash type spin default %d min 1 max 32768\n", DEFAULT_HASH_SIZE_IN_MB);
+      _p("option name Threads type spin default 1 min 1 max %d\n", MAX_THREADS);
+      _p("option name Ponder type check default false\n");
+      _p("uciok\n");
     }
 
-    else if (_cmd_cmp(&buf, CMD_READY))
-      print("readyok\n");
+    if (_cmd_cmp(&buf, CMD_READY))
+      _p("readyok\n");
 
     else if (_cmd_cmp(&buf, CMD_QUIT))
       break;
 
+    else if (_cmd_cmp(&buf, CMD_STOP))
+    {
+      pthread_mutex_lock(&search_settings.mutex);
+      search_status.done = 1;
+      search_status.go.infinite = 0;
+      search_status.go.ponder = 0;
+      pthread_mutex_unlock(&search_settings.mutex);
+
+      pthread_join(main_search_thread, NULL);
+    }
+    else if (_cmd_cmp(&buf, CMD_PONDERHIT))
+    {
+      pthread_mutex_lock(&search_settings.mutex);
+      search_status.go.ponder = 0;
+      if (search_status.search_finished)
+        search_status.done = 1;
+      pthread_mutex_unlock(&search_settings.mutex);
+
+      if (search_status.done)
+        pthread_join(main_search_thread, NULL);
+    }
+
     else if (_cmd_cmp(&buf, CMD_NEW_GAME))
-      read_fen(sd, initial_fen, 1);
+    {
+      full_reset_search_data();
+      read_fen(search_settings.sd, initial_fen);
+    }
 
     else if (_cmd_cmp(&buf, CMD_POSITION_FEN))
-      read_fen(sd, buf, 0);
+      read_fen(search_settings.sd, buf);
 
     else if (_cmd_cmp(&buf, CMD_POSITION_STARTPOS))
-      uci_position_startpos(sd, buf);
-
-    else if (_cmd_cmp(&buf, CMD_GO))
-      uci_go(sd, buf);
+      uci_position_startpos(buf);
 
     else if (_cmd_cmp(&buf, CMD_PERFT))
-      uci_perft(sd, buf);
+      uci_perft(buf);
 
     else if (_cmd_cmp(&buf, CMD_TEST))
-      run_tests(sd);
+      run_tests();
 
     else if (_cmd_cmp(&buf, CMD_PRINT))
-      print_board(sd->pos);
+      print_board(search_settings.sd->pos);
 
     else if (_cmd_cmp(&buf, OPTION_HASH))
-      set_hash_size(sd, atoi(buf));
+      set_hash_size(atoi(buf));
 
     else if (_cmd_cmp(&buf, OPTION_THREADS))
       set_max_threads(atoi(buf));
+
+    else if (_cmd_cmp(&buf, OPTION_PONDER))
+      set_ponder(buf);
+
+    else if (_cmd_cmp(&buf, CMD_GO))
+    {
+      pthread_join(main_search_thread, NULL);
+
+      parse_go_cmd(buf);
+      pthread_create(&main_search_thread, NULL, search, NULL);
+    }
   }
 }

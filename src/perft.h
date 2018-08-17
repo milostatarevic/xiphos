@@ -21,7 +21,7 @@
 
 #include "search.h"
 
-void run_tests(search_data_t *);
+void run_tests();
 uint64_t perft(search_data_t *, int, int, int);
 
 #endif

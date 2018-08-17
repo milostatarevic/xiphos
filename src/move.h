@@ -19,7 +19,7 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include <inttypes.h>
+#include "game.h"
 
 // [score: 16 bits][flags: 4 bits][from: 6 bits][to: 6 bits]
 // flags: [promo piece: 3 bits][is_quiet: 1 bit]
