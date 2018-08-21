@@ -611,7 +611,7 @@ void full_reset_search_data()
 {
   reset_search_data(search_settings.sd);
   reset_hash_key(search_settings.sd);
-  reset_threads_search_data(search_settings.threads_search_data);
+  reset_threads_search_data();
 }
 
 void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
