@@ -363,10 +363,12 @@ void set_ponder(char *buf)
 void uci()
 {
   pthread_t main_search_thread;
+  int searching;
   char *buf, input_buf[READ_BUFFER_SIZE];
 
   _p("%s %s by %s\n", VERSION, ARCH, AUTHOR);
 
+  searching = 0;
   search_settings.sd = (search_data_t *) malloc(sizeof(search_data_t));
   search_settings.threads_search_data = NULL;
   pthread_mutex_init(&search_settings.mutex, NULL);
@@ -414,7 +416,11 @@ void uci()
       search_status.go.ponder = 0;
       pthread_mutex_unlock(&search_settings.mutex);
 
-      pthread_join(main_search_thread, NULL);
+      if (searching)
+      {
+        pthread_join(main_search_thread, NULL);
+        searching = 0;
+      }
     }
     else if (_cmd_cmp(&buf, CMD_PONDERHIT))
     {
@@ -424,8 +430,11 @@ void uci()
         search_status.done = 1;
       pthread_mutex_unlock(&search_settings.mutex);
 
-      if (search_status.done)
+      if (search_status.done && searching)
+      {
         pthread_join(main_search_thread, NULL);
+        searching = 0;
+      }
     }
 
     else if (_cmd_cmp(&buf, CMD_NEW_GAME))
@@ -460,10 +469,12 @@ void uci()
 
     else if (_cmd_cmp(&buf, CMD_GO))
     {
-      pthread_join(main_search_thread, NULL);
+      if (searching)
+        pthread_join(main_search_thread, NULL);
 
       parse_go_cmd(buf);
       pthread_create(&main_search_thread, NULL, search, NULL);
+      searching = 1;
     }
   }
 }

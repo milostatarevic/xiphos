@@ -556,7 +556,7 @@ void *search_thread(void *thread_data)
     pthread_mutex_unlock(&search_settings.mutex);
   }
 
-  pthread_exit(NULL);
+  return NULL;
 }
 
 void print_best_move(search_data_t *sd)
@@ -665,5 +665,5 @@ void *search()
     pthread_join(threads[t], NULL);
 
   print_best_move(search_settings.sd);
-  pthread_exit(NULL);
+  return NULL;
 }
