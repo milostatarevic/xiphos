@@ -90,7 +90,7 @@ void print_board(position_t *pos)
     else
     {
       display_piece = display_pieces[_to_white(piece)];
-      if ((piece >> SIDE_SHIFT) == BLACK)
+      if (_side(piece) == BLACK)
         display_piece += 32;
     }
 

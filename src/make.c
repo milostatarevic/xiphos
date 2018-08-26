@@ -59,7 +59,7 @@ static inline void set_piece(position_t *pos, uint64_t *hash_key, int piece, int
     if (old_piece != EMPTY)
     {
       b = ~b;
-      pos->occ[old_piece >> SIDE_SHIFT] &= b;
+      pos->occ[_side(old_piece)] &= b;
       pos->piece_occ[_to_white(old_piece)] &= b;
     }
   }
@@ -69,7 +69,7 @@ static inline void set_piece(position_t *pos, uint64_t *hash_key, int piece, int
     pos->occ[pos->side ^ 1] &= ~b;
 
     if (_equal_to(piece, KING))
-      pos->k_sq[piece >> SIDE_SHIFT] = sq;
+      pos->k_sq[_side(piece)] = sq;
     else
     {
       pos->piece_occ[_to_white(piece)] |= b;

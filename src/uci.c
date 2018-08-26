@@ -78,7 +78,7 @@ void set_piece(position_t *pos, int piece, int sq)
   int w_piece, piece_side;
 
   w_piece = _to_white(piece);
-  piece_side = piece >> SIDE_SHIFT;
+  piece_side = _side(piece);
 
   pos->board[sq] = piece;
   pos->occ[piece_side] |= _b(sq);

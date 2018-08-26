@@ -43,7 +43,7 @@ static inline int is_pseudo_legal_and_quiet(position_t *pos, move_t move)
 
   m_from = _m_from(move);
   piece = pos->board[m_from];
-  if (piece == EMPTY || (piece >> SIDE_SHIFT) != pos->side)
+  if (piece == EMPTY || _side(piece) != pos->side)
     return 0;
 
   piece = _to_white(piece);

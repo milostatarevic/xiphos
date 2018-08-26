@@ -50,6 +50,7 @@ typedef struct {
 _Static_assert(sizeof(position_t) == 160, "position_t size error");
 
 void set_pins_and_checks(position_t *);
+int is_pseudo_legal(position_t *pos, move_t move);
 int legal_move(position_t *, move_t);
 int SEE(position_t *, move_t);
 

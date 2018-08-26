@@ -83,11 +83,20 @@ hash_data_t get_hash_data(search_data_t *sd)
 {
   hash_item_t *hash_item;
   hash_data_t hash_data;
+  move_t hash_move;
 
   hash_item = hash_store.items + (sd->hash_key & hash_store.mask);
   hash_data = hash_item->data;
+
+  // invalid entry
   if ((sd->hash_key ^ hash_item->mask) != hash_data.raw)
     hash_data.raw = 0;
+
+  // corrupted move
+  hash_move = hash_data.move;
+  if (_is_m(hash_move) && !is_pseudo_legal(sd->pos, hash_move))
+    hash_data.raw = 0;
+
   return hash_data;
 }
 
