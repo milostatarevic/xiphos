@@ -22,14 +22,15 @@
 #include "phash.h"
 #include "position.h"
 
+#define CHECK_SHIFT               1
 #define SAFE_CHECK_SHIFT          3
-#define K_SQ_ATTACK_SHIFT         1
 #define PUSHED_PASSERS_SHIFT      4
 #define THREAT_SHIFT              4
 #define PAWN_THREAT_SHIFT         6
 #define PUSHED_PAWN_THREAT_SHIFT  4
 #define PAWN_MOBILITY_SHIFT       2
 #define PAWN_ATTACK_SHIFT         1
+#define K_SQ_ATTACK               3
 #define BISHOP_PAIR_BONUS         40
 #define K_CNT_LIMIT               8
 
@@ -40,7 +41,7 @@
 const int piece_value[N_PIECES] = { 100, 310, 330, 500, 1000, 20000 };
 const int piece_phase[N_PIECES] = { 0, 6, 6, 13, 28, 0 };
 
-const int k_cnt_mul[K_CNT_LIMIT] = { 0, 2, 10, 16, 18, 20, 21, 22 };
+const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 7, 12, 16, 18, 20, 22 };
 
 const int m_mul_mid[N_PIECES] = { 0, 8, 6, 3, 2, 0 };
 const int m_mul_end[N_PIECES] = { 0, 4, 3, 6, 5, 0 };
@@ -116,7 +117,7 @@ int eval(position_t *pos)
             k_score[side] += _popcnt(b & k_zone);                              \
                                                                                \
             checks[side] |= b &= att;                                          \
-            k_score[side] += _popcnt(b);                                       \
+            k_score[side] += _popcnt(b) << CHECK_SHIFT;                        \
           }                                                                    \
           additional_computation                                               \
         }                                                                      \
@@ -196,7 +197,7 @@ int eval(position_t *pos)
     // attacked squares next to the king
     b = _b_piece_area[KING][pos->k_sq[side ^ 1]] &
          att_area[side] & ~att_area_nk[side ^ 1];
-    k_score[side] += _popcnt(b) << K_SQ_ATTACK_SHIFT;
+    k_score[side] += _popcnt(b) * K_SQ_ATTACK;
 
     // scale king safety
     score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
