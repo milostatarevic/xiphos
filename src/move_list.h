@@ -45,6 +45,6 @@ typedef struct {
 } move_list_t;
 
 void init_move_list(move_list_t *, int, int);
-move_t next_move(move_list_t *, search_data_t *, move_t, int, int, int);
+move_t next_move(move_list_t *, search_data_t *, move_t, int, int);
 
 #endif

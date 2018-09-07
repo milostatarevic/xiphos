@@ -154,7 +154,7 @@ int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int 
   hash_bound = HASH_UPPER_BOUND;
   init_move_list(&move_list, QSEARCH, pos->in_check);
 
-  while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0)))
+  while ((move = next_move(&move_list, sd, hash_move, depth, ply)))
   {
     if (!legal_move(pos, move))
       continue;
@@ -313,7 +313,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         beta_cut = beta + PROBCUT_MARGIN;
         init_move_list(&move_list, QSEARCH, pos->in_check);
 
-        while ((move = next_move(&move_list, sd, hash_move, depth, ply, 0)))
+        while ((move = next_move(&move_list, sd, hash_move, depth, ply)))
         {
           if (_m_eq(move, hash_move) && (_m_is_quiet(move) || SEE(pos, move) < 0))
             continue;
@@ -352,7 +352,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   best_move = hash_move;
   searched_cnt = quiet_moves_cnt = 0;
 
-  while ((move = next_move(&move_list, sd, hash_move, depth, ply, root_node)))
+  while ((move = next_move(&move_list, sd, hash_move, depth, ply)))
   {
     if (_m_eq(move, skip_move))
       continue;

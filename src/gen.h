@@ -23,9 +23,9 @@
 #include "position.h"
 
 void quiet_moves(position_t *, move_t *, int *);
-void checks_and_material_moves(position_t *, move_t *, int *, int);
+void checks_and_material_moves(position_t *, move_t *, int *);
 void material_moves(position_t *, move_t *, int *, int);
-void check_evasion_moves(position_t *, move_t *, int *, int);
+void check_evasion_moves(position_t *, move_t *, int *);
 void king_moves(position_t *, move_t *, int *);
 int count_non_king_moves(position_t *);
 

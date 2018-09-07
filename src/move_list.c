@@ -108,8 +108,7 @@ void static inline set_move(search_data_t *sd, move_list_t *ml, move_t move)
   }
 }
 
-static inline void generate_moves(move_list_t *ml, search_data_t *sd, int depth,
-                                  int ply, int minor_promotions)
+static inline void generate_moves(move_list_t *ml, search_data_t *sd, int depth, int ply)
 {
   switch(ml->phase)
   {
@@ -117,12 +116,12 @@ static inline void generate_moves(move_list_t *ml, search_data_t *sd, int depth,
 
       if (depth == 0)
       {
-        checks_and_material_moves(sd->pos, ml->moves, &ml->moves_cnt, 0);
+        checks_and_material_moves(sd->pos, ml->moves, &ml->moves_cnt);
         eval_all_moves(sd, ml->moves, ml->moves_cnt);
       }
       else
       {
-        material_moves(sd->pos, ml->moves, &ml->moves_cnt, minor_promotions);
+        material_moves(sd->pos, ml->moves, &ml->moves_cnt, depth > 0);
         eval_material_moves(sd->pos, ml->moves, ml->moves_cnt);
       }
       break;
@@ -156,7 +155,7 @@ static inline void generate_moves(move_list_t *ml, search_data_t *sd, int depth,
 
     case IN_CHECK:
 
-      check_evasion_moves(sd->pos, ml->moves, &ml->moves_cnt, minor_promotions);
+      check_evasion_moves(sd->pos, ml->moves, &ml->moves_cnt);
       eval_all_moves(sd, ml->moves, ml->moves_cnt);
       break;
   }
@@ -180,8 +179,7 @@ static inline void prepare_next_move(move_t *moves, int moves_cnt, int i)
   }
 }
 
-move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth,
-                 int ply, int minor_promotions)
+move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth, int ply)
 {
   int see_score;
   move_t move, next_move;
@@ -197,7 +195,7 @@ move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth
   {
     // generate moves for the current phase
     if (ml->cnt == 0)
-      generate_moves(ml, sd, depth, ply, minor_promotions);
+      generate_moves(ml, sd, depth, ply);
 
     // move to the next phase
     if (ml->cnt >= ml->moves_cnt)

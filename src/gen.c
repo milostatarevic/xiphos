@@ -240,8 +240,7 @@ void quiet_moves(position_t *pos, move_t *moves, int *moves_cnt)
   *moves_cnt = m_ptr - moves;
 }
 
-void check_evasion_moves(position_t *pos, move_t *moves, int *moves_cnt,
-                         int minor_promotions)
+void check_evasion_moves(position_t *pos, move_t *moves, int *moves_cnt)
 {
   int m_from, k_sq, att_sq;
   uint64_t b0, b1, occ, n_occ, occ_f, occ_o, occ_att, att, att_line;
@@ -268,8 +267,8 @@ void check_evasion_moves(position_t *pos, move_t *moves, int *moves_cnt,
     att_line = _b_line[att_sq][k_sq];
     occ_att = att_line | att;
 
-    _add_pawn_captures(pos, &m_ptr, occ_f, att, minor_promotions);
-    _add_non_capture_promotions(pos, &m_ptr, occ_f, n_occ, att_line, minor_promotions);
+    _add_pawn_captures(pos, &m_ptr, occ_f, att, 1);
+    _add_non_capture_promotions(pos, &m_ptr, occ_f, n_occ, att_line, 1);
     _add_quiet_pawn_moves(pos, &m_ptr, occ_f, n_occ, occ_att);
 
     _add_moves(KNIGHT, knight_attack, occ_att);
@@ -298,8 +297,7 @@ void king_moves(position_t *pos, move_t *moves, int *moves_cnt)
   *moves_cnt = m_ptr - moves;
 }
 
-void checks_and_material_moves(position_t *pos, move_t *moves, int *moves_cnt,
-                               int minor_promotions)
+void checks_and_material_moves(position_t *pos, move_t *moves, int *moves_cnt)
 {
   uint64_t b0, b1, oc, occ, n_occ, n_occ_f, occ_f, occ_o, p_occ,
            n_att, b_att, r_att, pinned;
@@ -344,9 +342,9 @@ void checks_and_material_moves(position_t *pos, move_t *moves, int *moves_cnt,
       if (oc)
       {
         // slow, but probably ok as this is rarely happening
-        _add_pawn_captures(pos, &m_ptr, _b(m_from), occ_o, minor_promotions);
+        _add_pawn_captures(pos, &m_ptr, _b(m_from), occ_o, 1);
         _add_quiet_pawn_moves(pos, &m_ptr, _b(m_from), n_occ, oc);
-        _add_non_capture_promotions(pos, &m_ptr, _b(m_from), n_occ, oc, minor_promotions);
+        _add_non_capture_promotions(pos, &m_ptr, _b(m_from), n_occ, oc, 1);
       }
     }
 
@@ -381,9 +379,9 @@ void checks_and_material_moves(position_t *pos, move_t *moves, int *moves_cnt,
   occ_f = pos->occ[pos->side] & ~pinned;
 
   _add_king_moves(occ_o);
-  _add_pawn_captures(pos, &m_ptr, occ_f, occ_o, minor_promotions);
+  _add_pawn_captures(pos, &m_ptr, occ_f, occ_o, 1);
   _add_quiet_pawn_moves(pos, &m_ptr, occ_f, n_occ, _b_piece_area[_o_piece(pos, PAWN)][k_sq]);
-  _add_non_capture_promotions(pos, &m_ptr, occ_f, n_occ, n_occ, minor_promotions);
+  _add_non_capture_promotions(pos, &m_ptr, occ_f, n_occ, n_occ, 1);
 
   _add_moves(KNIGHT, knight_attack, occ_o | (n_occ & n_att));
   _add_moves(BISHOP, bishop_attack, occ_o | (n_occ & b_att));

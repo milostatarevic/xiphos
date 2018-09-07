@@ -63,7 +63,7 @@ int test_checks_and_material_moves(search_data_t *sd, move_t *moves, int moves_c
   if (pos->in_check)
     return 1;
 
-  checks_and_material_moves(pos, test_moves, &test_moves_cnt, 0);
+  checks_and_material_moves(pos, test_moves, &test_moves_cnt);
 
   eval_all_moves(sd, test_moves, test_moves_cnt);
   eval_all_moves(sd, moves, moves_cnt);
@@ -124,7 +124,7 @@ uint64_t perft(search_data_t *sd, int depth, int ply, int additional_tests)
 
   if (pos->in_check)
   {
-    check_evasion_moves(pos, moves, &moves_cnt, 1);
+    check_evasion_moves(pos, moves, &moves_cnt);
   }
   else if (depth > 1 || pos->pinned || check_ep)
   {
