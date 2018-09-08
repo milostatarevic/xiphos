@@ -33,71 +33,9 @@ void init_move_list(move_list_t *ml, int search_mode, int in_check)
   ml->phase = in_check ? IN_CHECK : MATERIAL_MOVES;
 }
 
-static inline int is_pseudo_legal_and_quiet(position_t *pos, move_t move)
-{
-  int piece, m_from, m_to, m_diff;
-
-  m_to = _m_to(move);
-  if (pos->board[m_to] != EMPTY)
-    return 0;
-
-  m_from = _m_from(move);
-  piece = pos->board[m_from];
-  if (piece == EMPTY || _side(piece) != pos->side)
-    return 0;
-
-  piece = _to_white(piece);
-  m_diff = m_to - m_from;
-
-  if (piece == PAWN)
-  {
-    if ((m_diff < 0 && pos->side == BLACK) || (m_diff > 0 && pos->side == WHITE))
-      return 0;
-
-    // don't make promotions here
-    if (m_to <= H8 || m_to >= A1)
-      return 0;
-
-    if (m_diff == -8 || m_diff == 8)
-      return 1;
-
-    if (m_diff == -16)
-      return _rank(m_from) == RANK_2 && pos->board[m_from - 8] == EMPTY;
-    else if (m_diff == 16)
-      return _rank(m_from) == RANK_7 && pos->board[m_from + 8] == EMPTY;
-    return 0;
-  }
-
-  if (piece != KING)
-  {
-    if (!(_b_piece_area[piece][m_from] & _b(m_to)))
-      return 0;
-
-    if (piece == KNIGHT)
-      return 1;
-
-    return (_b_line[m_from][m_to] & (pos->occ[WHITE] | pos->occ[BLACK])) == 0;
-  }
-
-  // castling
-  if (m_diff == 2 || m_diff == -2)
-  {
-    if (!pos->c_flag || pos->board[(m_from + m_to) >> 1] != EMPTY)
-      return 0;
-
-    if (m_diff > 0)
-      return pos->c_flag & ((pos->side == WHITE) ? C_FLAG_WR : C_FLAG_BR);
-    else
-      return pos->board[m_to - 1] == EMPTY &&
-            (pos->c_flag & ((pos->side == WHITE) ? C_FLAG_WL : C_FLAG_BL));
-  }
-
-  return !!(_b_piece_area[KING][m_from] & _b(m_to));
-}
-
 void static inline set_move(search_data_t *sd, move_list_t *ml, move_t move)
 {
-  if (_is_m(move) && is_pseudo_legal_and_quiet(sd->pos, move))
+  if (_is_m(move) && move_is_quiet(sd->pos, move) && is_pseudo_legal(sd->pos, move))
   {
     ml->moves[0] = _m_set_quiet(move);
     ml->moves_cnt = 1;

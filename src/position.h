@@ -101,4 +101,16 @@ static inline void pins_and_attacks_to(
   *pinned &= occ_pin;
 }
 
+static inline int move_is_quiet(position_t *pos, move_t move)
+{
+  if (pos->board[_m_to(move)] != EMPTY)
+    return 0;
+
+  if (_equal_to(pos->board[_m_from(move)], PAWN) &&
+     (_m_promoted_to(move) || _m_to(move) == pos->ep_sq))
+    return 0;
+
+  return 1;
+}
+
 #endif

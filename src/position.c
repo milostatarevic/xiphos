@@ -116,11 +116,10 @@ int attacked_after_move(position_t *pos, int sq, move_t move)
   return 0;
 }
 
-// TODO this is ugly; try to refactor
-// used for hash move validation
 int is_pseudo_legal(position_t *pos, move_t move)
 {
   int piece, t_piece, m_from, m_to, m_diff;
+  uint64_t p_area, occ;
 
   m_from = _m_from(move);
   piece = pos->board[m_from];
@@ -137,46 +136,22 @@ int is_pseudo_legal(position_t *pos, move_t move)
 
   if (piece == PAWN)
   {
-    if ((m_diff < 0 && pos->side == BLACK) || (m_diff > 0 && pos->side == WHITE))
+    if (!_m_promoted_to(move) && (_rank(m_to) == RANK_8 || _rank(m_to) == RANK_1))
       return 0;
 
-    if (_rank(m_from) == RANK_1 || _rank(m_from) == RANK_8)
-      return 0;
+    occ = pos->occ[WHITE] | pos->occ[BLACK];
+    p_area = pushed_pawns(_b(m_from), ~occ, pos->side) & _b(m_to);
+    if (p_area)
+      return 1;
 
-    if (m_diff == -9 || m_diff == 9 || m_diff == -7 || m_diff == 7)
+    p_area = pawn_attacks(_b(m_from), pos->side) & _b(m_to);
+    if (p_area)
     {
       if (t_piece != EMPTY)
-      {
-        if (_file(m_from) == FILE_A)
-        {
-          if (pos->side == WHITE && m_diff == -7)
-            return 1;
-          if (pos->side == BLACK && m_diff == 9)
-            return 1;
-        }
-        else if (_file(m_from) == FILE_H)
-        {
-          if (pos->side == WHITE && m_diff == -9)
-            return 1;
-          if (pos->side == BLACK && m_diff == 7)
-            return 1;
-        }
-        else
-          return 1;
-      }
+        return 1;
       else if (m_to == pos->ep_sq)
         return 1;
     }
-    else if (t_piece == EMPTY)
-    {
-      if (m_diff == -8 || m_diff == 8)
-        return 1;
-      else if (m_diff == -16)
-        return _rank(m_from) == RANK_2 && pos->board[m_from - 8] == EMPTY;
-      else if (m_diff == 16)
-        return _rank(m_from) == RANK_7 && pos->board[m_from + 8] == EMPTY;
-    }
-
     return 0;
   }
 
@@ -194,7 +169,8 @@ int is_pseudo_legal(position_t *pos, move_t move)
   // castling
   if (m_diff == 2 || m_diff == -2)
   {
-    if (!pos->c_flag || pos->board[(m_from + m_to) >> 1] != EMPTY)
+    if (!pos->c_flag || pos->board[m_to] != EMPTY ||
+         pos->board[(m_from + m_to) >> 1] != EMPTY)
       return 0;
 
     if (m_diff > 0)
