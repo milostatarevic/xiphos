@@ -156,6 +156,8 @@ void read_fen(search_data_t *sd, char *buf)
   i ++;
   if (buf[i] != '-')
     pos->ep_sq = _chr_to_sq(buf[i], buf[i + 1]);
+
+  set_phase(pos);
   reevaluate_position(pos);
   set_pins_and_checks(pos);
 

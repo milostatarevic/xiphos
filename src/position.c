@@ -323,6 +323,23 @@ int non_pawn_material(position_t *pos)
   return 0;
 }
 
+void set_phase(position_t *pos)
+{
+  int sq, phase, piece;
+
+  phase = 16 * piece_phase[PAWN]   + 4 * piece_phase[KNIGHT] +
+           4 * piece_phase[BISHOP] + 4 * piece_phase[ROOK] +
+           2 * piece_phase[QUEEN];
+
+  for (sq = 0; sq < BOARD_SIZE; sq ++)
+  {
+    piece = pos->board[sq];
+    if (piece != EMPTY)
+      phase -= piece_phase[_to_white(piece)];
+  }
+  pos->phase = _max(phase, 0);
+}
+
 void reevaluate_position(position_t *pos)
 {
   int i, piece, score_mid[N_SIDES], score_end[N_SIDES];

@@ -56,6 +56,7 @@ int SEE(position_t *, move_t);
 
 int insufficient_material(position_t *);
 int non_pawn_material(position_t *);
+void set_phase(position_t *);
 void reevaluate_position(position_t *);
 
 static inline void position_cpy(position_t *dest, position_t *src)
