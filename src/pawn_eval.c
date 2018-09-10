@@ -27,9 +27,9 @@
 #define BACKWARD_PENALTY        12
 #define ISOLATED_PENALTY        8
 
-const int connected_bonus_mid[N_RANK] = { 0, 10, 15, 25, 40, 65, 110, 0 };
-const int connected_bonus_end[N_RANK] = { 0, 5, 5, 10, 20, 45, 80, 0 };
-const int passer_bonus[N_RANK] = { 0, 0, 4, 10, 40, 70, 90, 0 };
+const int connected_bonus_mid[N_RANK] = { 0, 11, 18, 21, 35, 58, 89, 0 };
+const int connected_bonus_end[N_RANK] = { 0, -2, 6, 1, 9, 37, 61, 0 };
+const int passer_bonus[N_RANK] = { 0, -5, -5, 5, 26, 70, 104, 0 };
 
 uint8_t distance[BOARD_SIZE][BOARD_SIZE];
 
