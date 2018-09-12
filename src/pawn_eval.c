@@ -23,13 +23,14 @@
 
 #define KING_PAWNS_SHIFT        3
 #define DISTANCE_BONUS_SHIFT    2
-#define DOUBLED_PENALTY         16
-#define BACKWARD_PENALTY        12
-#define ISOLATED_PENALTY        8
 
 const int connected_bonus_mid[N_RANK] = { 0, 11, 18, 21, 35, 58, 89, 0 };
 const int connected_bonus_end[N_RANK] = { 0, -2, 6, 1, 9, 37, 61, 0 };
 const int passer_bonus[N_RANK] = { 0, -5, -5, 5, 26, 70, 104, 0 };
+
+const int doubled_penalty[2] = {19, 23};
+const int backward_penalty[2] = {8, 2};
+const int isolated_penalty[2] = {6, 7};
 
 uint8_t distance[BOARD_SIZE][BOARD_SIZE];
 
@@ -99,23 +100,23 @@ phash_data_t pawn_eval(position_t *pos)
         // doubled pawn
         if (_b_doubled_pawn_area[side][sq] & p_occ_x)
         {
-          score_mid -= DOUBLED_PENALTY / 2;
-          score_end -= DOUBLED_PENALTY;
+          score_mid -= doubled_penalty[0];
+          score_end -= doubled_penalty[1];
         }
 
         // backward pawn
         if (!(_b_passer_area[side ^ 1][ssq] & ~_b_file[f] & p_occ_x) &&
             ((_b_piece_area[PAWN | (side << SIDE_SHIFT)][ssq] | _b(ssq)) & p_occ_o))
         {
-          score_mid -= BACKWARD_PENALTY / 2;
-          score_end -= BACKWARD_PENALTY;
+          score_mid -= backward_penalty[0];
+          score_end -= backward_penalty[1];
         }
 
         // isolated pawn
         if (!(_b_isolated_pawn_area[f] & p_occ_x))
         {
-          score_mid -= ISOLATED_PENALTY / 2;
-          score_end -= ISOLATED_PENALTY;
+          score_mid -= isolated_penalty[0];
+          score_end -= isolated_penalty[1];
         }
       }
     }
