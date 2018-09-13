@@ -24,13 +24,13 @@
 #define KING_PAWNS_SHIFT        3
 #define DISTANCE_BONUS_SHIFT    2
 
-const int connected_bonus_mid[N_RANK] = { 0, 11, 18, 21, 35, 58, 89, 0 };
-const int connected_bonus_end[N_RANK] = { 0, -2, 6, 1, 9, 37, 61, 0 };
-const int passer_bonus[N_RANK] = { 0, -5, -5, 5, 26, 70, 104, 0 };
+const int connected_bonus_mid[N_RANK] = { 0, 13, 21, 23, 35, 42, 82, 0 };
+const int connected_bonus_end[N_RANK] = { 0, -4, 6, 5, 13, 50, 69, 0 };
+const int passer_bonus[N_RANK] = { 0, -6, -6, 6, 27, 68, 103, 0 };
 
-const int doubled_penalty[2] = {19, 23};
-const int backward_penalty[2] = {8, 2};
-const int isolated_penalty[2] = {6, 7};
+const int doubled_penalty[2] = {10, 22};
+const int backward_penalty[2] = {6, 1};
+const int isolated_penalty[2] = {5, 6};
 
 uint8_t distance[BOARD_SIZE][BOARD_SIZE];
 

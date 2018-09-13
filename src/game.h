@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.3.24"
+#define VERSION                      "Xiphos 0.3.25"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
