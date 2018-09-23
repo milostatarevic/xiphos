@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.3.26"
+#define VERSION                      "Xiphos 0.3.27"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
@@ -65,6 +65,7 @@
 
 #define _rank(sq)                    ((sq) >> 3)
 #define _file(sq)                    ((sq) & 0x7)
+#define _sq_rf(r, f)                 (((r) << 3) + (f))
 #define _file_chr(sq)                ('a' + _file(sq))
 #define _rank_chr(sq)                ('8' - _rank(sq))
 #define _chr_to_sq(f, r)             (((f) - 'a') + ((7 - ((r) - '1')) << 3))

@@ -18,8 +18,6 @@
 
 #include "bitboard.h"
 
-#define _sq_rf(r, f)    (((r) << 3) + (f))
-
 typedef struct {
   int r, f;
 } attack_vec_t;
