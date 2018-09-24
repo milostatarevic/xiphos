@@ -10,7 +10,7 @@ This project is inspired by Garry Kasparov's "[Deep Thinking: Where Machine Inte
 
 I would like to thank the authors and the community involved in the creation of the open source projects listed below. Their work greatly inspired me, and without them, this project wouldn't exist.
 
-* [Chess Programming Wiki](https://chessprogramming.wikispaces.com/)
+* [Chess Programming Wiki](https://www.chessprogramming.org/)
 * [Crafty](http://www.craftychess.com/)
 * [Demolito](https://github.com/lucasart/Demolito/)
 * [Ethereal](https://github.com/AndyGrant/Ethereal/)
