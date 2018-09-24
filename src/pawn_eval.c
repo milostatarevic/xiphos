@@ -50,7 +50,7 @@ const int pawn_storm[2][BOARD_SIZE - N_FILE] = {
     5,   5,  -2, -12,  -4,  -6,   4,   8,
     8,   1,  -4,   6,   3,  -6,  -2,   3,
     1,  21,  -2,   0,   5,  -6,   2,   5,
-   -1,   7,   4,   5,  -1,   3,   0,   1,
+   -1,   7,   4,   5,  -1,   3,   0,   1
   }, {
     0,   0,   0,   0,   0,   0,   0,   0,
   -17,   5,   9, -14, -22, -25,  -1,  -3,
@@ -156,7 +156,8 @@ phash_data_t pawn_eval(position_t *pos)
         score_mid += connected_bonus_mid[r] >> (reduce ? 1 : 0);
         score_end += connected_bonus_end[r] >> (reduce ? 1 : 0);
       }
-      else {
+      else
+      {
         p_occ_x = p_occ_f ^ _b(sq);
 
         // doubled pawn
