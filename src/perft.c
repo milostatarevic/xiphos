@@ -65,8 +65,8 @@ int test_checks_and_material_moves(search_data_t *sd, move_t *moves, int moves_c
 
   checks_and_material_moves(pos, test_moves, &test_moves_cnt);
 
-  eval_all_moves(sd, test_moves, test_moves_cnt);
-  eval_all_moves(sd, moves, moves_cnt);
+  eval_all_moves(sd, test_moves, test_moves_cnt, 0);
+  eval_all_moves(sd, moves, moves_cnt, 0);
 
   // test material moves
   for (i = 0; i < moves_cnt; i ++)

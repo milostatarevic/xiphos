@@ -49,18 +49,24 @@ move_t get_counter_move(search_data_t *sd)
   return sd->counter_moves[sd->pos->board[m_to]][m_to];
 }
 
-void add_to_history(search_data_t *sd, int16_t *cmh_ptr, move_t move, int score)
+void add_to_history(search_data_t *sd, int16_t **cmh_ptr, move_t move, int score)
 {
+  int i, m_to, m_from, piece_pos;
   int16_t *item;
 
-  item = &sd->history[sd->pos->side][_m_from(move)][_m_to(move)];
+  m_to = _m_to(move);
+  m_from = _m_from(move);
+  piece_pos = sd->pos->board[m_from] * BOARD_SIZE + m_to;
+
+  item = &sd->history[sd->pos->side][m_from][m_to];
   *item += score - (*item) * _abs(score) / MAX_HISTORY_SCORE;
 
-  if (cmh_ptr)
-  {
-    item = &_counter_move_history_item(sd->pos, cmh_ptr, move);
-    *item += score - (*item) * _abs(score) / MAX_HISTORY_SCORE;
-  }
+  for (i = 0; i < MAX_CMH_PLY; i ++)
+    if (cmh_ptr[i])
+    {
+      item = &cmh_ptr[i][piece_pos];
+      *item += score - (*item) * _abs(score) / MAX_HISTORY_SCORE;
+    }
 }
 
 void clear_killer_moves(search_data_t *sd)

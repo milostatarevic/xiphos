@@ -25,6 +25,6 @@
 
 void eval_material_moves(position_t *, move_t *, int);
 int eval_quiet_moves(search_data_t *, move_t *, int, int);
-void eval_all_moves(search_data_t *, move_t *, int);
+void eval_all_moves(search_data_t *, move_t *, int, int);
 
 #endif

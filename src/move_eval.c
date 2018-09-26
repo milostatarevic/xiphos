@@ -38,12 +38,12 @@ int eval_quiet_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
 {
   int i, cnt;
   move_t move, killer_0, killer_1, counter;
-  int16_t *cmh_ptr;
+  int16_t *cmh_ptr[MAX_CMH_PLY];
 
   killer_0 = _m_base(sd->killer_moves[ply][0]);
   killer_1 = _m_base(sd->killer_moves[ply][1]);
   counter = _m_base(get_counter_move(sd));
-  cmh_ptr = _counter_move_history_pointer(sd);
+  set_counter_move_history_pointer(cmh_ptr, sd, ply);
 
   cnt = 0;
   for (i = 0; i < moves_cnt; i ++)
@@ -58,15 +58,15 @@ int eval_quiet_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
   return cnt;
 }
 
-void eval_all_moves(search_data_t *sd, move_t *moves, int moves_cnt)
+void eval_all_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
 {
   int i, score, piece;
   move_t move;
-  int16_t *cmh_ptr;
   position_t *pos;
+  int16_t *cmh_ptr[MAX_CMH_PLY];
 
   pos = sd->pos;
-  cmh_ptr = _counter_move_history_pointer(sd);
+  set_counter_move_history_pointer(cmh_ptr, sd, ply);
 
   for (i = 0; i < moves_cnt; i ++)
   {
@@ -74,7 +74,7 @@ void eval_all_moves(search_data_t *sd, move_t *moves, int moves_cnt)
     if (move_is_quiet(pos, move))
     {
       moves[i] = _m_set_quiet(
-        _m_with_score(move, get_h_score(sd, cmh_ptr, move) - 2 * MAX_HISTORY_SCORE)
+        _m_with_score(move, get_h_score(sd, cmh_ptr, move) / 4 - 3 * MAX_HISTORY_SCORE)
       );
     }
     else

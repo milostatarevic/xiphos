@@ -55,7 +55,7 @@ static inline void generate_moves(move_list_t *ml, search_data_t *sd, int depth,
       if (depth == 0)
       {
         checks_and_material_moves(sd->pos, ml->moves, &ml->moves_cnt);
-        eval_all_moves(sd, ml->moves, ml->moves_cnt);
+        eval_all_moves(sd, ml->moves, ml->moves_cnt, ply);
       }
       else
       {
@@ -94,7 +94,7 @@ static inline void generate_moves(move_list_t *ml, search_data_t *sd, int depth,
     case IN_CHECK:
 
       check_evasion_moves(sd->pos, ml->moves, &ml->moves_cnt);
-      eval_all_moves(sd, ml->moves, ml->moves_cnt);
+      eval_all_moves(sd, ml->moves, ml->moves_cnt, ply);
       break;
   }
 }
