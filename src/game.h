@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.4.1"
+#define VERSION                      "Xiphos 0.4.2"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
@@ -94,5 +94,7 @@ enum {
   A1, B1, C1, D1, E1, F1, G1, H1,
   NO_SQ, SQ_LIMIT,
 };
+
+enum { PHASE_MID, PHASE_END, N_PHASES };
 
 #endif

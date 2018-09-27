@@ -23,13 +23,11 @@
 
 #define DISTANCE_BONUS_SHIFT    2
 
-const int connected_bonus_mid[N_RANK] = { 0, 13, 21, 23, 35, 42, 82, 0 };
-const int connected_bonus_end[N_RANK] = { 0, -4, 6, 5, 13, 50, 69, 0 };
 const int passer_bonus[N_RANK] = { 0, -6, -6, 6, 27, 68, 103, 0 };
 
-const int doubled_penalty[2] = {10, 22};
-const int backward_penalty[2] = {6, 1};
-const int isolated_penalty[2] = {5, 6};
+const int doubled_penalty[N_PHASES] = {10, 22};
+const int backward_penalty[N_PHASES] = {6, 1};
+const int isolated_penalty[N_PHASES] = {5, 6};
 
 const int pawn_shield[BOARD_SIZE] = {
     0,   0,   0,   0,   0,   0,   0,   0,
@@ -59,6 +57,28 @@ const int pawn_storm[2][BOARD_SIZE - N_FILE] = {
   -16,   6,  -8,  -6, -17,  -4, -13,  -3,
    14,  17,   3,   2,   3,  -5,  15,   2,
    -8,  -1,  -1,  -2, -12,   9,   4,  -1
+  }
+};
+
+const int connected_pawns[2][BOARD_SIZE][N_PHASES] = {
+  {
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {23, 22}, {33, 24}, {20, 37}, {-3, 1}, {35, 37}, {23, 30}, {34, 10}, {15, 32},
+    {3, 3}, {5, 8}, {7, 4}, {14, 1}, {17, 10}, {21, 6}, {13, 0}, {22, -2},
+    {1, 0}, {10, 1}, {10, 5}, {6, 3}, {13, 1}, {14, 4}, {18, -3}, {9, -2},
+    {5, 0}, {9, 1}, {11, 5}, {8, 5}, {13, 7}, {12, 2}, {15, 2}, {12, -1},
+    {4, -1}, {1, 3}, {7, -3}, {-1, 4}, {7, 1}, {5, -3}, {8, -2}, {7, -12},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+  }, {
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {90, 55}, {73, 56}, {87, 79}, {92, 56}, {117, 105}, {109, 104}, {72, 48}, {76, 70},
+    {35, 52}, {37, 50}, {41, 37}, {28, 51}, {48, 52}, {46, 59}, {45, 53}, {41, 46},
+    {44, 26}, {31, 19}, {39, 23}, {25, 21}, {37, 22}, {44, 18}, {45, 24}, {45, 24},
+    {24, 13}, {34, 7}, {19, 6}, {18, 12}, {22, 9}, {16, 7}, {26, 10}, {29, 11},
+    {14, 2}, {23, 3}, {19, 9}, {24, 10}, {26, 6}, {19, -1}, {31, 0}, {16, 1},
+    {16, -11}, {13, -9}, {16, -5}, {13, -2}, {12, 3}, {8, -7}, {16, -5}, {3, -14},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
   }
 };
 
@@ -107,7 +127,8 @@ static inline int eval_pawn_shield(int side, int k_sq, uint64_t p_occ_f, uint64_
 
 phash_data_t pawn_eval(position_t *pos)
 {
-  int m, r, f, side, sq, ssq, k_sq_f, k_sq_o, d, d_max, score_mid, score_end, reduce;
+  int m, r, f, side, sq, rsq, ssq, k_sq_f, k_sq_o, d, d_max, unopposed,
+      score_mid, score_end;
   uint64_t b, pushed_passers, p_occ, p_occ_f, p_occ_o, p_occ_x;
   phash_data_t phash_data;
 
@@ -134,6 +155,7 @@ phash_data_t pawn_eval(position_t *pos)
       sq = _bsf(b);
       f = _file(sq);
       r = m ^ _rank(sq);
+      rsq = (side == WHITE) ? sq : 56 ^ sq;
       ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
 
       // distance bonus
@@ -152,9 +174,9 @@ phash_data_t pawn_eval(position_t *pos)
       // connected pawn
       if (_b_connected_pawn_area[side][sq] & p_occ_f)
       {
-        reduce = !!(_b_doubled_pawn_area[side][sq] & p_occ_o);
-        score_mid += connected_bonus_mid[r] >> (reduce ? 1 : 0);
-        score_end += connected_bonus_end[r] >> (reduce ? 1 : 0);
+        unopposed = !(_b_doubled_pawn_area[side][sq] & p_occ_o);
+        score_mid += connected_pawns[unopposed][rsq][PHASE_MID];
+        score_end += connected_pawns[unopposed][rsq][PHASE_END];
       }
       else
       {
@@ -163,23 +185,23 @@ phash_data_t pawn_eval(position_t *pos)
         // doubled pawn
         if (_b_doubled_pawn_area[side][sq] & p_occ_x)
         {
-          score_mid -= doubled_penalty[0];
-          score_end -= doubled_penalty[1];
+          score_mid -= doubled_penalty[PHASE_MID];
+          score_end -= doubled_penalty[PHASE_END];
         }
 
         // backward pawn
         if (!(_b_passer_area[side ^ 1][ssq] & ~_b_file[f] & p_occ_x) &&
             ((_b_piece_area[PAWN | (side << SIDE_SHIFT)][ssq] | _b(ssq)) & p_occ_o))
         {
-          score_mid -= backward_penalty[0];
-          score_end -= backward_penalty[1];
+          score_mid -= backward_penalty[PHASE_MID];
+          score_end -= backward_penalty[PHASE_END];
         }
 
         // isolated pawn
         if (!(_b_isolated_pawn_area[f] & p_occ_x))
         {
-          score_mid -= isolated_penalty[0];
-          score_end -= isolated_penalty[1];
+          score_mid -= isolated_penalty[PHASE_MID];
+          score_end -= isolated_penalty[PHASE_END];
         }
       }
     }
