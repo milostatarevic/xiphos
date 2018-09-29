@@ -26,8 +26,8 @@
 #include "perft.h"
 #include "phash.h"
 #include "position.h"
-#include "pst.h"
 #include "search.h"
+#include "tables.h"
 #include "uci.h"
 
 int main(int argc, char **argv)

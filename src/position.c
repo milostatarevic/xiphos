@@ -21,7 +21,7 @@
 #include "hash.h"
 #include "history.h"
 #include "position.h"
-#include "pst.h"
+#include "tables.h"
 
 void set_pins_and_checks(position_t *pos)
 {

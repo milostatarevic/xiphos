@@ -19,7 +19,7 @@
 #include "eval.h"
 #include "hash.h"
 #include "move.h"
-#include "pst.h"
+#include "tables.h"
 #include "search.h"
 
 int rook_c_flag_mask[BOARD_SIZE];

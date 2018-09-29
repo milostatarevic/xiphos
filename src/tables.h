@@ -16,12 +16,19 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PST_H
-#define PST_H
+#ifndef TABLES_H
+#define TABLES_H
 
 #include "game.h"
 
 extern int pst_mid[P_LIMIT][BOARD_SIZE], pst_end[P_LIMIT][BOARD_SIZE];
+extern int distance[BOARD_SIZE][BOARD_SIZE];
+
+extern const int pawn_shield[BOARD_SIZE];
+extern const int pawn_storm[2][BOARD_SIZE];
+extern const int connected_pawns[2][N_PHASES][BOARD_SIZE];
+
 void init_pst();
+void init_distance();
 
 #endif

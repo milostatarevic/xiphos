@@ -20,6 +20,7 @@
 #include "game.h"
 #include "phash.h"
 #include "position.h"
+#include "tables.h"
 
 #define DISTANCE_BONUS_SHIFT    2
 
@@ -28,70 +29,6 @@ const int passer_bonus[N_RANK] = { 0, -6, -6, 6, 27, 68, 103, 0 };
 const int doubled_penalty[N_PHASES] = {10, 22};
 const int backward_penalty[N_PHASES] = {6, 1};
 const int isolated_penalty[N_PHASES] = {5, 6};
-
-const int pawn_shield[BOARD_SIZE] = {
-    0,   0,   0,   0,   0,   0,   0,   0,
-    4,  15,  15,   6,   2,  15,  11,   1,
-    8,  16,   2,   3,   7,   7,   8,   8,
-    7, -10,   1,   4,  -1,  -1,  -4,   6,
-   23,  -1,   8,  -1,  -1,  -2,  -9,   3,
-   35,  53,  14, -13, -17,  -1,   7,  -4,
-  -15, -12,   8,  28,  17,  13, -31,  -4,
-  -19, -24, -12,  -8,  -6, -10, -13, -11
-};
-
-const int pawn_storm[2][BOARD_SIZE - N_FILE] = {
-  {
-    0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,   0,   0,   0,   0,   0,   0,
-   -6, -26, -16, -26,  -8, -17, -17, -14,
-    5,   5,  -2, -12,  -4,  -6,   4,   8,
-    8,   1,  -4,   6,   3,  -6,  -2,   3,
-    1,  21,  -2,   0,   5,  -6,   2,   5,
-   -1,   7,   4,   5,  -1,   3,   0,   1
-  }, {
-    0,   0,   0,   0,   0,   0,   0,   0,
-  -17,   5,   9, -14, -22, -25,  -1,  -3,
-   -6, -26,   1,   3, -16, -19,  -5,  18,
-   -3,  21, -16,  -5, -12,  -9, -12,  13,
-  -16,   6,  -8,  -6, -17,  -4, -13,  -3,
-   14,  17,   3,   2,   3,  -5,  15,   2,
-   -8,  -1,  -1,  -2, -12,   9,   4,  -1
-  }
-};
-
-const int connected_pawns[2][BOARD_SIZE][N_PHASES] = {
-  {
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {23, 22}, {33, 24}, {20, 37}, {-3, 1}, {35, 37}, {23, 30}, {34, 10}, {15, 32},
-    {3, 3}, {5, 8}, {7, 4}, {14, 1}, {17, 10}, {21, 6}, {13, 0}, {22, -2},
-    {1, 0}, {10, 1}, {10, 5}, {6, 3}, {13, 1}, {14, 4}, {18, -3}, {9, -2},
-    {5, 0}, {9, 1}, {11, 5}, {8, 5}, {13, 7}, {12, 2}, {15, 2}, {12, -1},
-    {4, -1}, {1, 3}, {7, -3}, {-1, 4}, {7, 1}, {5, -3}, {8, -2}, {7, -12},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-  }, {
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {90, 55}, {73, 56}, {87, 79}, {92, 56}, {117, 105}, {109, 104}, {72, 48}, {76, 70},
-    {35, 52}, {37, 50}, {41, 37}, {28, 51}, {48, 52}, {46, 59}, {45, 53}, {41, 46},
-    {44, 26}, {31, 19}, {39, 23}, {25, 21}, {37, 22}, {44, 18}, {45, 24}, {45, 24},
-    {24, 13}, {34, 7}, {19, 6}, {18, 12}, {22, 9}, {16, 7}, {26, 10}, {29, 11},
-    {14, 2}, {23, 3}, {19, 9}, {24, 10}, {26, 6}, {19, -1}, {31, 0}, {16, 1},
-    {16, -11}, {13, -9}, {16, -5}, {13, -2}, {12, 3}, {8, -7}, {16, -5}, {3, -14},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-  }
-};
-
-uint8_t distance[BOARD_SIZE][BOARD_SIZE];
-
-void init_distance()
-{
-  int i, j;
-
-  for (i = 0; i < BOARD_SIZE; i ++)
-    for (j = 0; j < BOARD_SIZE; j ++)
-      distance[i][j] = _min(_max(_abs(_rank(i) - _rank(j)), _abs(_file(i) - _file(j))), 5);
-}
 
 static inline int eval_pawn_shield(int side, int k_sq, uint64_t p_occ_f, uint64_t p_occ_o)
 {
@@ -155,7 +92,7 @@ phash_data_t pawn_eval(position_t *pos)
       sq = _bsf(b);
       f = _file(sq);
       r = m ^ _rank(sq);
-      rsq = (side == WHITE) ? sq : 56 ^ sq;
+      rsq = (side == WHITE) ? sq : sq ^ 56;
       ssq = (side == WHITE) ? (sq - 8) : (sq + 8);
 
       // distance bonus
@@ -175,8 +112,8 @@ phash_data_t pawn_eval(position_t *pos)
       if (_b_connected_pawn_area[side][sq] & p_occ_f)
       {
         unopposed = !(_b_doubled_pawn_area[side][sq] & p_occ_o);
-        score_mid += connected_pawns[unopposed][rsq][PHASE_MID];
-        score_end += connected_pawns[unopposed][rsq][PHASE_END];
+        score_mid += connected_pawns[unopposed][PHASE_MID][rsq];
+        score_end += connected_pawns[unopposed][PHASE_END][rsq];
       }
       else
       {
