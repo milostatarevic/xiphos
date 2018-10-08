@@ -34,7 +34,6 @@
 #define PROBCUT_DEPTH                 5
 #define IID_DEPTH                     5
 #define LMP_DEPTH                     10
-#define CMH_PRUNING_DEPTH             3
 #define LMR_DEPTH                     3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
@@ -189,7 +188,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 {
   int i, searched_cnt, quiet_moves_cnt, best_score, static_score, score,
       use_hash, hash_bound, hash_score, improving, beta_cut, new_depth,
-      reduction, piece_pos, h_score;
+      reduction, h_score;
   move_t move, best_move, hash_move;
   hash_data_t hash_data;
   int16_t *cmh_ptr[MAX_CMH_PLY];
@@ -366,15 +365,6 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       {
         move_list.cnt = move_list.moves_cnt;
         continue;
-      }
-
-      // CMH pruning
-      if (depth <= CMH_PRUNING_DEPTH && move_list.phase == QUIET_MOVES &&
-          cmh_ptr[0] && cmh_ptr[1])
-      {
-        piece_pos = pos->board[_m_from(move)] * BOARD_SIZE + _m_to(move);
-        if (cmh_ptr[0][piece_pos] < 0 && cmh_ptr[1][piece_pos] < 0)
-          continue;
       }
 
       // prune bad captures
