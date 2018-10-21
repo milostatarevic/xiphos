@@ -31,7 +31,7 @@ typedef uint32_t move_t;
 #define _m_is_quiet(m)         ((m) & 0x1000)
 #define _m_promoted_to(m)      (((m) >> 13) & 7)
 #define _m(from, to)           (((from) << 6) | (to))
-#define _m_base(m)             ((m) & 0xfff)
+#define _m_base(m)             ((m) & 0xefff)
 #define _is_m(m)               (_m_base(m))
 #define _m_eq(m0, m1)          (_m_base(m0) == _m_base(m1))
 #define _m_set_quiet(m)        ((m) | 0x1000)
