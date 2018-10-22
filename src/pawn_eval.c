@@ -24,11 +24,14 @@
 
 #define DISTANCE_BONUS_SHIFT    2
 
-const int passer_bonus[N_RANK] = { 0, -6, -6, 6, 27, 68, 103, 0 };
+const int passer_bonus[N_PHASES][N_RANK] = {
+  { 0, -7, -6, 2, 21, 61, 101, 0 },
+  { 0, -6, -5, 6, 27, 72, 102, 0 }
+};
 
-const int doubled_penalty[N_PHASES] = {10, 22};
-const int backward_penalty[N_PHASES] = {6, 1};
-const int isolated_penalty[N_PHASES] = {5, 6};
+const int doubled_penalty[N_PHASES] = {7, 21};
+const int backward_penalty[N_PHASES] = {4, 1};
+const int isolated_penalty[N_PHASES] = {5, 5};
 
 static inline int eval_pawn_shield(int side, int k_sq, uint64_t p_occ_f, uint64_t p_occ_o)
 {
@@ -103,9 +106,10 @@ phash_data_t pawn_eval(position_t *pos)
       if (!(_b_passer_area[side][sq] & p_occ_o))
       {
         pushed_passers |= _b(ssq);
-        score_mid += passer_bonus[r];
-        score_end += passer_bonus[r] + (distance[ssq][k_sq_o] << r) -
-                                       (distance[ssq][k_sq_f] << (r - 1));
+        score_mid += passer_bonus[PHASE_MID][r];
+        score_end += passer_bonus[PHASE_END][r] +
+                     (distance[ssq][k_sq_o] << r) -
+                     (distance[ssq][k_sq_f] << (r - 1));
       }
 
       // connected pawn
