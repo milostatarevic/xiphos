@@ -25,8 +25,13 @@
 #define DISTANCE_BONUS_SHIFT    2
 
 const int passer_bonus[N_PHASES][N_RANK] = {
-  { 0, -7, -6, 2, 21, 61, 101, 0 },
-  { 0, -6, -5, 6, 27, 72, 102, 0 }
+  { 0, -6, -3, -6, 13, 45, 92, 0 },
+  { 0, -8, -2, 13, 39, 76, 120, 0 }
+};
+
+const int distance_bonus[2][N_RANK] = {
+  { 0, 1, 2, 6, 17, 35, 47, 0 },
+  { 0, -1, 1, 4, 12, 19, 24, 0 },
 };
 
 const int doubled_penalty[N_PHASES] = {7, 21};
@@ -108,8 +113,8 @@ phash_data_t pawn_eval(position_t *pos)
         pushed_passers |= _b(ssq);
         score_mid += passer_bonus[PHASE_MID][r];
         score_end += passer_bonus[PHASE_END][r] +
-                     (distance[ssq][k_sq_o] << r) -
-                     (distance[ssq][k_sq_f] << (r - 1));
+                     distance[ssq][k_sq_o] * distance_bonus[0][r] -
+                     distance[ssq][k_sq_f] * distance_bonus[1][r];
       }
 
       // connected pawn
