@@ -24,20 +24,6 @@
 
 #define DISTANCE_BONUS_SHIFT    2
 
-const int passer_bonus[N_PHASES][N_RANK] = {
-  { 0, -6, -3, -6, 13, 45, 92, 0 },
-  { 0, -8, -2, 13, 39, 76, 120, 0 }
-};
-
-const int distance_bonus[2][N_RANK] = {
-  { 0, 1, 2, 6, 17, 35, 47, 0 },
-  { 0, -1, 1, 4, 12, 19, 24, 0 },
-};
-
-const int doubled_penalty[N_PHASES] = {7, 21};
-const int backward_penalty[N_PHASES] = {4, 1};
-const int isolated_penalty[N_PHASES] = {5, 5};
-
 static inline int eval_pawn_shield(int side, int k_sq, uint64_t p_occ_f, uint64_t p_occ_o)
 {
   int f, fi, m, sq, r, r_min, unopposed, score;

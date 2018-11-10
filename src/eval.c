@@ -21,6 +21,7 @@
 #include "pawn_eval.h"
 #include "phash.h"
 #include "position.h"
+#include "tables.h"
 
 #define CHECK_SHIFT               1
 #define SAFE_CHECK_SHIFT          3
@@ -38,13 +39,7 @@
 #define TOTAL_PHASE               (1 << PHASE_SHIFT)
 #define TEMPO                     10
 
-const int piece_value[N_PIECES] = { 100, 310, 330, 500, 1000, 20000 };
-const int piece_phase[N_PIECES] = { 0, 6, 6, 13, 28, 0 };
-
 const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 7, 12, 16, 18, 20, 22 };
-
-const int m_mul_mid[N_PIECES] = { 0, 8, 6, 3, 2, 0 };
-const int m_mul_end[N_PIECES] = { 0, 4, 3, 6, 5, 0 };
 
 int eval(position_t *pos)
 {
@@ -98,32 +93,28 @@ int eval(position_t *pos)
 
     #define _score_piece(piece, method, att, additional_computation)           \
       b0 = pos->piece_occ[piece] & occ_f;                                      \
-      if (b0)                                                                  \
+      _loop(b0)                                                                \
       {                                                                        \
-        pcnt = 0;                                                              \
-        _loop(b0)                                                              \
-        {                                                                      \
-          sq = _bsf(b0);                                                       \
-          att_area_nk[side] |= b = method(occ_x, sq);                          \
+        sq = _bsf(b0);                                                         \
+        att_area_nk[side] |= b = method(occ_x, sq);                            \
+        b &= n_occ;                                                            \
                                                                                \
-          b &= n_occ;                                                          \
-          pcnt += _popcnt(b);                                                  \
-                                                                               \
-          /* king safety */                                                    \
-          b &= k_zone | att;                                                   \
-          if (b)                                                               \
-          {                                                                    \
-            k_cnt[side] ++;                                                    \
-            k_score[side] += _popcnt(b & k_zone);                              \
-                                                                               \
-            checks[side] |= b &= att;                                          \
-            k_score[side] += _popcnt(b) << CHECK_SHIFT;                        \
-          }                                                                    \
-          additional_computation                                               \
-        }                                                                      \
         /* mobility */                                                         \
-        score_mid += pcnt * m_mul_mid[piece];                                  \
-        score_end += pcnt * m_mul_end[piece];                                  \
+        pcnt = _popcnt(b);                                                     \
+        score_mid += mobility[PHASE_MID][piece][pcnt];                         \
+        score_end += mobility[PHASE_END][piece][pcnt];                         \
+                                                                               \
+        /* king safety */                                                      \
+        b &= k_zone | att;                                                     \
+        if (b)                                                                 \
+        {                                                                      \
+          k_cnt[side] ++;                                                      \
+          k_score[side] += _popcnt(b & k_zone);                                \
+                                                                               \
+          checks[side] |= b &= att;                                            \
+          k_score[side] += _popcnt(b) << CHECK_SHIFT;                          \
+        }                                                                      \
+        additional_computation                                                 \
       }
 
     occ_x = occ ^ pos->piece_occ[QUEEN];

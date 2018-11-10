@@ -24,9 +24,21 @@
 extern int pst_mid[P_LIMIT][BOARD_SIZE], pst_end[P_LIMIT][BOARD_SIZE];
 extern int distance[BOARD_SIZE][BOARD_SIZE];
 
+extern const int piece_value[N_PIECES];
+extern const int piece_phase[N_PIECES];
+
 extern const int pawn_shield[BOARD_SIZE];
 extern const int pawn_storm[2][BOARD_SIZE];
 extern const int connected_pawns[2][N_PHASES][BOARD_SIZE];
+
+extern const int passer_bonus[N_PHASES][N_RANK];
+extern const int distance_bonus[2][N_RANK];
+
+extern const int doubled_penalty[N_PHASES];
+extern const int backward_penalty[N_PHASES];
+extern const int isolated_penalty[N_PHASES];
+
+extern const int mobility[N_PHASES][N_PIECES - 1][32];
 
 void init_pst();
 void init_distance();
