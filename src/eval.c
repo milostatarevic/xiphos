@@ -28,9 +28,8 @@
 #define PUSHED_PASSERS_SHIFT      4
 #define THREAT_SHIFT              4
 #define PAWN_THREAT_SHIFT         6
-#define PUSHED_PAWN_THREAT_SHIFT  4
 #define BEHIND_PAWN_BONUS         9
-#define PAWN_MOBILITY_BONUS       6
+#define PAWN_MOBILITY_BONUS       7
 #define PAWN_ATTACK_SHIFT         1
 #define K_SQ_ATTACK               3
 #define K_CNT_LIMIT               8
@@ -150,12 +149,9 @@ int eval(position_t *pos)
     score_end += pcnt;
 
     // threats by protected pawns (after push)
-    pcnt = _popcnt(
-      pawn_attacks(att_area[side] & p_pushed[side], side) & occ_o_np
-    ) << PUSHED_PAWN_THREAT_SHIFT;
-
-    score_mid += pcnt;
-    score_end += pcnt >> 1;
+    pcnt = _popcnt(pawn_attacks(att_area[side] & p_pushed[side], side) & occ_o_np);
+    score_mid += pcnt * threat_protected_pawn_push[PHASE_MID];
+    score_end += pcnt * threat_protected_pawn_push[PHASE_END];
 
     // N/B behind pawns
     b = (side == WHITE ? p_occ << 8 : p_occ >> 8) & occ_f &

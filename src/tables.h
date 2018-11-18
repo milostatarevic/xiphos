@@ -39,6 +39,7 @@ extern const int backward_penalty[N_PHASES];
 extern const int isolated_penalty[N_PHASES];
 
 extern const int rook_file_bonus[N_PHASES][2];
+extern const int threat_protected_pawn_push[N_PHASES];
 extern const int bishop_pair[N_PHASES];
 
 extern const int mobility[N_PHASES][N_PIECES - 1][32];
