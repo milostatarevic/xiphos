@@ -233,10 +233,6 @@ const int doubled_penalty[N_PHASES] = {6, 22};
 const int backward_penalty[N_PHASES] = {-1, 3};
 const int isolated_penalty[N_PHASES] = {4, 2};
 
-const int rook_file_bonus[N_PHASES][2] = { {13, 30}, {4, 7} };
-const int threat_protected_pawn_push[N_PHASES] = {16, 11};
-const int bishop_pair[N_PHASES] = {42, 43};
-
 const int mobility[N_PHASES][N_PIECES - 1][32] = {
   {
     {},
@@ -254,6 +250,25 @@ const int mobility[N_PHASES][N_PIECES - 1][32] = {
        89, 95, 94, 92, 87, 92, 83, 86, 78, 85, 79, 74, 87, 78 },
   }
 };
+
+const int threats[N_PHASES][N_PIECES - 2][8] = {
+  {
+    {},
+    { -2, -6, 22, 51, 27 },
+    {  3, 18, -3, 40, 35 },
+    { -1, 17, 19,  0, 54 },
+  }, {
+    {},
+    { 12, 11, 39, 31, 11 },
+    {  9, 38, 15, 28, 51 },
+    { 13, 26, 38,  7, 34 },
+  }
+};
+const int threat_king[N_PHASES] = {20, 24};
+const int threat_protected_pawn_push[N_PHASES] = {16, 11};
+
+const int rook_file_bonus[N_PHASES][2] = { {13, 30}, {4, 7} };
+const int bishop_pair[N_PHASES] = {42, 43};
 
 void init_distance()
 {
