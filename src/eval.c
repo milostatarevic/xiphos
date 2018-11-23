@@ -38,6 +38,7 @@
 #define TEMPO                     10
 
 const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 7, 12, 16, 18, 20, 22 };
+const int attack_weight[N_PIECES] = { 0, 1, 1, 2, 2, 0 };
 
 int eval(position_t *pos)
 {
@@ -125,7 +126,7 @@ int eval(position_t *pos)
         if (b)                                                                 \
         {                                                                      \
           k_cnt[side] ++;                                                      \
-          k_score[side] += _popcnt(b & k_zone);                                \
+          k_score[side] += _popcnt(b & k_zone) * attack_weight[piece];         \
                                                                                \
           checks[side] |= b &= att;                                            \
           k_score[side] += _popcnt(b) << CHECK_SHIFT;                          \
