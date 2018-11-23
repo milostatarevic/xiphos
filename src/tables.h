@@ -31,7 +31,7 @@ extern const int pawn_shield[BOARD_SIZE];
 extern const int pawn_storm[2][BOARD_SIZE];
 extern const int connected_pawns[2][N_PHASES][BOARD_SIZE];
 
-extern const int passer_bonus[N_PHASES][N_RANK];
+extern const int passer_bonus[N_PHASES][BOARD_SIZE];
 extern const int distance_bonus[2][N_RANK];
 
 extern const int doubled_penalty[N_PHASES];

@@ -97,8 +97,8 @@ phash_data_t pawn_eval(position_t *pos)
       if (!(_b_passer_area[side][sq] & p_occ_o))
       {
         pushed_passers |= _b(ssq);
-        score_mid += passer_bonus[PHASE_MID][r];
-        score_end += passer_bonus[PHASE_END][r] +
+        score_mid += passer_bonus[PHASE_MID][rsq];
+        score_end += passer_bonus[PHASE_END][rsq] +
                      distance[ssq][k_sq_o] * distance_bonus[0][r] -
                      distance[ssq][k_sq_f] * distance_bonus[1][r];
       }
