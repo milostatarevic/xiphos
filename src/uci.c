@@ -259,6 +259,12 @@ void parse_go_cmd(char *buf)
       max_time_allowed = _max(search_status.go.time - reduce_time, 1);
 
       target_time = max_time_allowed / moves_to_go + search_status.go.inc;
+
+      // move faster at the beginning of the game
+      if (_popcnt(pos->occ[WHITE] & (_B_RANK_1 | _B_RANK_2)) >= 11 ||
+          _popcnt(pos->occ[BLACK] & (_B_RANK_7 | _B_RANK_8)) >= 11)
+        target_time /= 2;
+
       for (i = 0; i < TM_STEPS; i ++)
       {
         ratio = MIN_TIME_RATIO +
