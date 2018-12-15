@@ -25,10 +25,8 @@
 
 #define CHECK_SHIFT               1
 #define SAFE_CHECK_SHIFT          3
-#define PUSHED_PASSERS_SHIFT      4
-#define PAWN_THREAT_SHIFT         6
-#define BEHIND_PAWN_BONUS         9
-#define PAWN_MOBILITY_BONUS       7
+#define PUSHED_PASSERS_BONUS      10
+#define BEHIND_PAWN_BONUS         8
 #define PAWN_ATTACK_SHIFT         1
 #define K_SQ_ATTACK               3
 #define K_CNT_LIMIT               8
@@ -149,7 +147,7 @@ int eval(position_t *pos)
     att_area[side] = att_area_nk[side] | _b_piece_area[KING][k_sq_f];
 
     // passer protection/attacks
-    score_end += _popcnt(att_area[side] & pushed_passers) << PUSHED_PASSERS_SHIFT;
+    score_end += _popcnt(att_area[side] & pushed_passers) * PUSHED_PASSERS_BONUS;
 
     // threat by king
     if(_b_piece_area[KING][k_sq_f] & occ_o & n_occ)
@@ -159,12 +157,9 @@ int eval(position_t *pos)
     }
 
     // threats by protected pawns
-    pcnt = _popcnt(
-      pawn_attacks(att_area[side] & p_occ_f, side) & occ_o_np
-    ) << PAWN_THREAT_SHIFT;
-
-    score_mid += pcnt;
-    score_end += pcnt;
+    pcnt = _popcnt(pawn_attacks(att_area[side] & p_occ_f, side) & occ_o_np);
+    score_mid += pcnt * threat_protected_pawn[PHASE_MID];
+    score_end += pcnt * threat_protected_pawn[PHASE_END];
 
     // threats by protected pawns (after push)
     pcnt = _popcnt(pawn_attacks(att_area[side] & p_pushed[side], side) & occ_o_np);
@@ -193,7 +188,9 @@ int eval(position_t *pos)
     p_pushed_safe = p_pushed[side] & (att_area[side] | ~att_area[side ^ 1]);
 
     // pawn mobility
-    score_end += _popcnt(p_pushed_safe) * PAWN_MOBILITY_BONUS;
+    pcnt = _popcnt(p_pushed_safe);
+    score_mid += pcnt * pawn_mobility[PHASE_MID];
+    score_end += pcnt * pawn_mobility[PHASE_END];
 
     // pawn attacks on the king zone
     if ((b = p_pushed_safe & _b_king_zone[pos->k_sq[side ^ 1]]))
