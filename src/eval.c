@@ -35,8 +35,7 @@
 #define TOTAL_PHASE               (1 << PHASE_SHIFT)
 #define TEMPO                     10
 
-const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 7, 12, 16, 18, 20, 22 };
-const int attack_weight[N_PIECES] = { 0, 1, 1, 2, 2, 0 };
+const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 5, 10, 12, 13, 14, 15 };
 
 int eval(position_t *pos)
 {
@@ -124,10 +123,10 @@ int eval(position_t *pos)
         if (b)                                                                 \
         {                                                                      \
           k_cnt[side] ++;                                                      \
-          k_score[side] += _popcnt(b & k_zone) * attack_weight[piece];         \
+          k_score[side] += _popcnt(b & k_zone);                                \
                                                                                \
           checks[side] |= b &= att;                                            \
-          k_score[side] += _popcnt(b) << CHECK_SHIFT;                          \
+          k_score[side] += _popcnt(b);                                         \
         }                                                                      \
                                                                                \
         _rook_bonus                                                            \
@@ -145,6 +144,10 @@ int eval(position_t *pos)
 
     // include king attack
     att_area[side] = att_area_nk[side] | _b_piece_area[KING][k_sq_f];
+
+    // scale king safety score
+    k_score[side] *= k_score[side];
+    k_score[side] /= 4;
 
     // passer protection/attacks
     score_end += _popcnt(att_area[side] & pushed_passers) * PUSHED_PASSERS_BONUS;
