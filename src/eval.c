@@ -1,6 +1,6 @@
 /*
   Xiphos, a UCI chess engine
-  Copyright (C) 2018 Milos Tatarevic
+  Copyright (C) 2018, 2019 Milos Tatarevic
 
   Xiphos is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,18 +24,17 @@
 #include "tables.h"
 
 #define CHECK_SHIFT               1
-#define SAFE_CHECK_SHIFT          3
+#define SAFE_CHECK_BONUS          3
 #define PUSHED_PASSERS_BONUS      10
 #define BEHIND_PAWN_BONUS         8
-#define PAWN_ATTACK_SHIFT         1
-#define K_SQ_ATTACK               3
+#define K_SQ_ATTACK               2
 #define K_CNT_LIMIT               8
 
 #define PHASE_SHIFT               7
 #define TOTAL_PHASE               (1 << PHASE_SHIFT)
 #define TEMPO                     10
 
-const int k_cnt_mul[K_CNT_LIMIT] = { 0, 1, 5, 10, 12, 13, 14, 15 };
+const int k_cnt_mul[K_CNT_LIMIT] = { 0, 3, 7, 12, 16, 18, 19, 20 };
 
 int eval(position_t *pos)
 {
@@ -75,10 +74,11 @@ int eval(position_t *pos)
     n_occ = ~(p_occ_f | p_att[side ^ 1] | _b(k_sq_f));
     occ_o_np = occ_o & ~p_occ_o;
     occ_o_nk = occ_o & ~_b(k_sq_o);
+    occ_x = occ ^ pos->piece_occ[QUEEN];
 
     n_att = knight_attack(occ, k_sq_o);
-    b_att = bishop_attack(occ, k_sq_o);
-    r_att = rook_attack(occ, k_sq_o);
+    b_att = bishop_attack(occ_x, k_sq_o);
+    r_att = rook_attack(occ_x, k_sq_o);
 
     checks[side] = 0;
     att_area_nk[side] = p_att[side];
@@ -132,7 +132,6 @@ int eval(position_t *pos)
         _rook_bonus                                                            \
       }
 
-    occ_x = occ ^ pos->piece_occ[QUEEN];
     _score_piece(KNIGHT, knight_attack, n_att, _score_threats, );
     _score_piece(BISHOP, bishop_attack, b_att, _score_threats, );
 
@@ -144,10 +143,6 @@ int eval(position_t *pos)
 
     // include king attack
     att_area[side] = att_area_nk[side] | _b_piece_area[KING][k_sq_f];
-
-    // scale king safety score
-    k_score[side] *= k_score[side];
-    k_score[side] /= 4;
 
     // passer protection/attacks
     score_end += _popcnt(att_area[side] & pushed_passers) * PUSHED_PASSERS_BONUS;
@@ -196,17 +191,14 @@ int eval(position_t *pos)
     score_end += pcnt * pawn_mobility[PHASE_END];
 
     // pawn attacks on the king zone
-    if ((b = p_pushed_safe & _b_king_zone[pos->k_sq[side ^ 1]]))
-    {
-      k_score[side] += _popcnt(b) << PAWN_ATTACK_SHIFT;
-      k_cnt[side] ++;
-    }
+    b = p_pushed_safe & _b_king_zone[pos->k_sq[side ^ 1]];
+    k_score[side] += _popcnt(b);
 
     // bonus for safe checks
     if ((b = checks[side] & ~att_area[side ^ 1]))
     {
       k_cnt[side] ++;
-      k_score[side] += _popcnt(b) << SAFE_CHECK_SHIFT;
+      k_score[side] += _popcnt(b) * SAFE_CHECK_BONUS;
     }
 
     // attacked squares next to the king
@@ -215,7 +207,7 @@ int eval(position_t *pos)
     k_score[side] += _popcnt(b) * K_SQ_ATTACK;
 
     // scale king safety
-    score_mid += k_score[side] * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)];
+    score_mid += _sqr(k_score[side]) * k_cnt_mul[_min(k_cnt[side], K_CNT_LIMIT - 1)] / 8;
 
     score_mid = -score_mid;
     score_end = -score_end;

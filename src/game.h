@@ -1,6 +1,6 @@
 /*
   Xiphos, a UCI chess engine
-  Copyright (C) 2018 Milos Tatarevic
+  Copyright (C) 2018, 2019 Milos Tatarevic
 
   Xiphos is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#define VERSION                      "Xiphos 0.4.16"
+#define VERSION                      "Xiphos 0.4.17"
 #define AUTHOR                       "Milos Tatarevic"
 
 #ifdef _BMI2
