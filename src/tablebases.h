@@ -16,18 +16,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GEN_H
-#define GEN_H
+#ifndef TABLEBASES_H
+#define TABLEBASES_H
 
-#include "move.h"
 #include "position.h"
 
-void material_moves(position_t *, move_t *, int *, int);
-void quiet_moves(position_t *, move_t *, int *);
-void get_all_moves(position_t *, move_t *, int *);
-void check_evasion_moves(position_t *, move_t *, int *);
-void king_moves(position_t *, move_t *, int *);
-void checks_and_material_moves(position_t *, move_t *, int *);
-int count_non_king_moves(position_t *);
+unsigned tablebases_probe_wdl(position_t *);
+move_t tablebases_probe_root(position_t *);
 
 #endif

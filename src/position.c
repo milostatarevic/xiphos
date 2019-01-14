@@ -139,7 +139,7 @@ int is_pseudo_legal(position_t *pos, move_t move)
     if (!_m_promoted_to(move) && (_rank(m_to) == RANK_8 || _rank(m_to) == RANK_1))
       return 0;
 
-    occ = pos->occ[WHITE] | pos->occ[BLACK];
+    occ = _occ(pos);
     p_area = pushed_pawns(_b(m_from), ~occ, pos->side) & _b(m_to);
     if (p_area)
       return 1;
@@ -163,7 +163,7 @@ int is_pseudo_legal(position_t *pos, move_t move)
     if (piece == KNIGHT)
       return 1;
 
-    return (_b_line[m_from][m_to] & (pos->occ[WHITE] | pos->occ[BLACK])) == 0;
+    return (_b_line[m_from][m_to] & _occ(pos)) == 0;
   }
 
   // castling
@@ -241,7 +241,7 @@ int SEE(position_t *pos, move_t move)
 
   is_promotion = _m_promoted_to(move);
   pqv = piece_value[QUEEN] - piece_value[PAWN];
-  occ = (pos->occ[WHITE] | pos->occ[BLACK]) ^ (1ULL << m_from);
+  occ = _occ(pos) ^ (1ULL << m_from);
 
   gain[0] = captured_value;
   if (is_promotion && p == PAWN)
@@ -306,7 +306,7 @@ int insufficient_material(position_t *pos)
 {
   uint64_t occ;
 
-  occ = pos->occ[WHITE] | pos->occ[BLACK];
+  occ = _occ(pos);
   return _popcnt(occ) == 3 &&
          (occ & (pos->piece_occ[KNIGHT] | pos->piece_occ[BISHOP]));
 }

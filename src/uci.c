@@ -26,6 +26,7 @@
 #include "perft.h"
 #include "position.h"
 #include "search.h"
+#include "fathom/tbprobe.h"
 
 #define CMD_UCI                     "uci\n"
 #define CMD_GO                      "go"
@@ -44,6 +45,8 @@
 #define OPTION_HASH                 "setoption name Hash value"
 #define OPTION_THREADS              "setoption name Threads value"
 #define OPTION_PONDER               "setoption name Ponder value"
+#define OPTION_SYZYGY_PATH          "setoption name SyzygyPath value"
+#define OPTION_SYZYGY_PROBE_DEPTH   "setoption name SyzygyProbeDepth value"
 
 #define MAX_REDUCE_TIME             1000
 #define REDUCE_TIME                 150
@@ -309,7 +312,7 @@ void uci_info(move_t *pv)
 {
   int i, score;
   char buf[BUFFER_LINE_SIZE], pv_string[PLY_LIMIT * 8];
-  uint64_t nodes, elapsed_time;
+  uint64_t nodes, tbhits, elapsed_time;
 
   score = search_status.score;
   if (_is_mate_score(score))
@@ -318,14 +321,17 @@ void uci_info(move_t *pv)
   else
     sprintf(buf, "cp %d", score);
 
-  nodes = 0;
+  nodes = tbhits = 0;
   for (i = 0; i < search_settings.max_threads; i ++)
+  {
     nodes += search_settings.threads_search_data[i].nodes;
+    tbhits += search_settings.threads_search_data[i].tbhits;
+  }
 
   elapsed_time = time_in_ms() - search_status.time_in_ms;
 
-  _p("info depth %d score %s nodes %"PRIu64" time %"PRIu64" nps %"PRIu64" ",
-      search_status.depth, buf, nodes, elapsed_time,
+  _p("info depth %d score %s nodes %"PRIu64" tbhits %"PRIu64" time %"PRIu64" nps %"PRIu64" ",
+      search_status.depth, buf, nodes, tbhits, elapsed_time,
       nodes * UINT64_C(1000) / (elapsed_time + 1));
 
   sprintf(pv_string, "pv ");
@@ -368,6 +374,20 @@ void set_ponder(char *buf)
   _p("ponder=%d\n", search_settings.ponder_mode);
 }
 
+void set_syzygy_path(char *buf)
+{
+  buf[strlen(buf) - 1] = 0;
+  tb_init(buf);
+  if (TB_LARGEST > 0)
+    _p("syzygy_path=%s\n", buf);
+}
+
+void set_syzygy_probe_depth(int depth)
+{
+  search_settings.tb_probe_depth = _max(_min(depth, MAX_DEPTH), 1);
+  _p("syzygy_probe_depth=%d\n", search_settings.tb_probe_depth);
+}
+
 void uci()
 {
   pthread_t main_search_thread;
@@ -384,6 +404,7 @@ void uci()
   set_max_threads(DEFAULT_THREADS);
   set_hash_size(DEFAULT_HASH_SIZE_IN_MB);
   search_settings.ponder_mode = 0;
+  search_settings.tb_probe_depth = 1;
 
   full_reset_search_data();
   read_fen(search_settings.sd, initial_fen);
@@ -407,6 +428,8 @@ void uci()
       _p("option name Hash type spin default %d min 1 max 32768\n", DEFAULT_HASH_SIZE_IN_MB);
       _p("option name Threads type spin default 1 min 1 max %d\n", MAX_THREADS);
       _p("option name Ponder type check default false\n");
+      _p("option name SyzygyPath type string default <empty>\n");
+      _p("option name SyzygyProbeDepth type spin default 1 min 1 max %d\n", MAX_DEPTH);
       _p("uciok\n");
     }
 
@@ -474,6 +497,12 @@ void uci()
 
     else if (_cmd_cmp(&buf, OPTION_PONDER))
       set_ponder(buf);
+
+    else if (_cmd_cmp(&buf, OPTION_SYZYGY_PATH))
+      set_syzygy_path(buf);
+
+    else if (_cmd_cmp(&buf, OPTION_SYZYGY_PROBE_DEPTH))
+      set_syzygy_probe_depth(atoi(buf));
 
     else if (_cmd_cmp(&buf, CMD_GO))
     {

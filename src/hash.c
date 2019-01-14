@@ -64,18 +64,18 @@ void init_z_keys()
 int adjust_hash_score(int score, int ply)
 {
   if (score >= MATE_SCORE - MAX_PLY)
-      score -= ply;
+    score -= ply;
   else if (score <= -MATE_SCORE + MAX_PLY)
-      score += ply;
+    score += ply;
   return score;
 }
 
 int to_hash_score(int score, int ply)
 {
   if (score >= MATE_SCORE - MAX_PLY)
-      score += ply;
+    score += ply;
   else if (score <= -MATE_SCORE + MAX_PLY)
-      score -= ply;
+    score -= ply;
   return score;
 }
 

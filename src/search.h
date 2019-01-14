@@ -30,7 +30,7 @@
 
 typedef struct {
   int tid, hash_keys_cnt;
-  uint64_t nodes, hash_key;
+  uint64_t nodes, tbhits, hash_key;
   position_t *pos,
               pos_list[PLY_LIMIT];
   move_t   killer_moves[PLY_LIMIT][MAX_KILLER_MOVES],
@@ -49,7 +49,7 @@ struct {
 } search_status;
 
 struct {
-  int max_threads, ponder_mode;
+  int max_threads, ponder_mode, tb_probe_depth;
   search_data_t *sd, *threads_search_data;
   pthread_mutex_t mutex;
 } search_settings;

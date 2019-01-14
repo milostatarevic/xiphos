@@ -25,6 +25,8 @@
 #include "search.h"
 #include "uci.h"
 
+#include <stdlib.h>
+
 typedef struct {
   char *fen;
   int depth;
@@ -109,7 +111,7 @@ int test_checks_and_material_moves(search_data_t *sd, move_t *moves, int moves_c
 
 uint64_t perft(search_data_t *sd, int depth, int ply, int additional_tests)
 {
-  int i, moves_cnt, moves_cnt_tmp, check_ep;
+  int i, moves_cnt, check_ep;
   uint64_t nodes, p_b;
   position_t *pos;
   move_t moves[MAX_MOVES];
@@ -128,10 +130,7 @@ uint64_t perft(search_data_t *sd, int depth, int ply, int additional_tests)
   }
   else if (depth > 1 || pos->pinned || check_ep)
   {
-    material_moves(pos, moves, &moves_cnt, 1);
-    quiet_moves(pos, moves + moves_cnt, &moves_cnt_tmp);
-    moves_cnt += moves_cnt_tmp;
-
+    get_all_moves(pos, moves, &moves_cnt);
     if (additional_tests)
       if (!test_checks_and_material_moves(sd, moves, moves_cnt))
         return 0;
@@ -168,13 +167,16 @@ void run_tests()
 {
   int i, errors;
   uint64_t nodes;
-  search_data_t sd;
+  search_data_t *sd;
+
+  sd = (search_data_t *) malloc(sizeof(search_data_t));
+  reset_search_data(sd);
 
   errors = 0;
   for (i = 0; i < sizeof(tests) / sizeof(test_t); i ++)
   {
-    read_fen(&sd, tests[i].fen);
-    nodes = perft(&sd, tests[i].depth, 0, 1);
+    read_fen(sd, tests[i].fen);
+    nodes = perft(sd, tests[i].depth, 0, 1);
     if (nodes != tests[i].nodes)
     {
       _p("E");
@@ -184,4 +186,6 @@ void run_tests()
       _p(".");
   }
   _p("\nerrors: %d\n", errors);
+
+  free(sd);
 }

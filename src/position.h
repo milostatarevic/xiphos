@@ -26,6 +26,7 @@
 #include "game.h"
 #include "move.h"
 
+#define _occ(pos)                 (pos->occ[WHITE] | pos->occ[BLACK])
 #define _f_piece(pos, w_piece)    ((w_piece) | ((pos)->side << SIDE_SHIFT))
 #define _o_piece(pos, w_piece)    ((w_piece) | (((pos)->side ^ 1) << SIDE_SHIFT))
 

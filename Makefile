@@ -4,7 +4,7 @@ CFLAGS = -O3 -flto -Wall
 LIBS = -lm -lpthread
 
 TARGET = xiphos
-SRCS = src/*.c
+SRCS = src/*.c src/fathom/tbprobe.c
 
 sse:
 	$(CC) $(CFLAGS) -msse $(SRCS) -o $(TARGET)-sse $(LIBS)

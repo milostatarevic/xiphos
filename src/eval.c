@@ -51,7 +51,7 @@ int eval(position_t *pos)
   score_end = pos->score_end + phash_data.score_end;
 
   p_occ = pos->piece_occ[PAWN];
-  occ = pos->occ[WHITE] | pos->occ[BLACK];
+  occ = _occ(pos);
   pushed_passers = phash_data.pushed_passers;
 
   for (side = WHITE; side < N_SIDES; side ++)

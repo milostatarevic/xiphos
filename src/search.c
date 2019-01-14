@@ -27,7 +27,9 @@
 #include "move_list.h"
 #include "position.h"
 #include "search.h"
+#include "tablebases.h"
 #include "uci.h"
+#include "fathom/tbprobe.h"
 
 #define RAZOR_DEPTH                   3
 #define FUTILITY_DEPTH                6
@@ -188,7 +190,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 {
   int i, searched_cnt, quiet_moves_cnt, best_score, static_score, score,
       use_hash, hash_bound, hash_score, improving, beta_cut, new_depth,
-      reduction, h_score;
+      reduction, h_score, piece_cnt;
+  unsigned tb_result;
   move_t move, best_move, hash_move;
   hash_data_t hash_data;
   int16_t *cmh_ptr[MAX_CMH_PLY];
@@ -244,6 +247,44 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           }
           return hash_score;
         }
+    }
+  }
+
+  // probe tablebases
+  if (TB_LARGEST > 0 && !root_node && !pos->fifty_cnt && !pos->c_flag)
+  {
+    piece_cnt = _popcnt(_occ(pos));
+    if (piece_cnt < TB_LARGEST ||
+       (piece_cnt == TB_LARGEST && depth >= search_settings.tb_probe_depth))
+    {
+      tb_result = tablebases_probe_wdl(pos);
+      if (tb_result != TB_RESULT_FAILED)
+      {
+        sd->tbhits ++;
+
+        switch(tb_result)
+        {
+          case TB_WIN:
+            score = MATE_SCORE - MAX_PLY - ply - 1;
+            hash_bound = HASH_LOWER_BOUND;
+            break;
+          case TB_LOSS:
+            score = -MATE_SCORE + MAX_PLY + ply + 1;
+            hash_bound = HASH_UPPER_BOUND;
+            break;
+          default:
+            score = 0;
+            hash_bound = HASH_EXACT;
+        }
+
+        if ((hash_bound == HASH_LOWER_BOUND && score >= beta) ||
+            (hash_bound == HASH_UPPER_BOUND && score <= alpha) ||
+            (hash_bound == HASH_EXACT))
+        {
+          set_hash_data(sd, 0, score, score, MAX_PLY - 1, 0, hash_bound);
+          return score;
+        }
+      }
     }
   }
 
@@ -499,7 +540,6 @@ void *search_thread(void *thread_data)
   search_data_t *sd;
 
   sd = (search_data_t *)thread_data;
-  sd->nodes = 0;
 
   score = 0;
   for (depth = 1; depth <= search_status.max_depth; depth ++)
@@ -625,28 +665,52 @@ void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
   memcpy(sd->hash_keys, src_sd->hash_keys, sizeof(sd->hash_keys));
 
   clear_killer_moves(sd);
+  sd->nodes = sd->tbhits = 0;
 }
 
 void *search()
 {
   int t;
+  move_t tb_move;
+  search_data_t *sd;
   pthread_t threads[MAX_THREADS];
 
+  sd = search_settings.sd;
   search_status.tm_steps = 0;
   search_status.time_in_ms = time_in_ms();
 
   set_hash_iteration();
-  reevaluate_position(search_settings.sd->pos);
+  reevaluate_position(sd->pos);
 
   memset(pv, 0, sizeof(pv));
   memset(shared_search_depth_cnt, 0, sizeof(shared_search_depth_cnt));
 
+  // prepare search threads
+  for (t = 0; t < search_settings.max_threads; t ++)
+    init_search_data(&search_settings.threads_search_data[t], sd, t);
+
+  // probe tablebases
+  if (TB_LARGEST > 0 && !sd->pos->c_flag && _popcnt(_occ(sd->pos)) <= TB_LARGEST)
+  {
+    tb_move = tablebases_probe_root(sd->pos);
+    if (_is_m(tb_move))
+    {
+      pv[0] = tb_move; pv[1] = 0;
+
+      search_status.depth = 1;
+      search_status.score = _m_score(tb_move);
+      search_settings.threads_search_data[0].tbhits = 1;
+
+      uci_info(pv);
+      print_best_move(sd);
+
+      return NULL;
+    }
+  }
+
   // launch search threads
   for (t = 0; t < search_settings.max_threads; t ++)
-  {
-    init_search_data(&search_settings.threads_search_data[t], search_settings.sd, t);
     pthread_create(&threads[t], NULL, search_thread, (void *) &search_settings.threads_search_data[t]);
-  }
 
   while (!search_status.done)
   {
@@ -664,6 +728,6 @@ void *search()
   for (t = 0; t < search_settings.max_threads; t ++)
     pthread_join(threads[t], NULL);
 
-  print_best_move(search_settings.sd);
+  print_best_move(sd);
   return NULL;
 }

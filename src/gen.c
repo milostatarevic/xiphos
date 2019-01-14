@@ -240,6 +240,16 @@ void quiet_moves(position_t *pos, move_t *moves, int *moves_cnt)
   *moves_cnt = m_ptr - moves;
 }
 
+void get_all_moves(position_t *pos, move_t *moves, int *moves_cnt)
+{
+  int quiet_moves_cnt;
+
+  material_moves(pos, moves, moves_cnt, 1);
+  quiet_moves(pos, moves + *moves_cnt, &quiet_moves_cnt);
+
+  *moves_cnt += quiet_moves_cnt;
+}
+
 void check_evasion_moves(position_t *pos, move_t *moves, int *moves_cnt)
 {
   int m_from, k_sq, att_sq;
