@@ -65,7 +65,7 @@ void init_lmr()
 
   for (d = 0; d < MAX_DEPTH; d ++)
     for (m = 0; m < MAX_MOVES; m ++)
-      lmr[d][m] = sqrt(d * m / 8);
+      lmr[d][m] = 1.0 + log(d) * log(m) * 0.5;
 }
 
 static inline int draw(search_data_t *sd)
