@@ -65,7 +65,6 @@ static inline int get_h_score(search_data_t *sd, int16_t **cmh_ptr, move_t move)
 }
 
 void set_killer_move(search_data_t *, move_t, int);
-void clear_killer_moves(search_data_t *);
 void set_counter_move(search_data_t *, move_t);
 move_t get_counter_move(search_data_t *);
 void add_to_history(search_data_t *, int16_t **, move_t, int);

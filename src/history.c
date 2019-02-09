@@ -68,8 +68,3 @@ void add_to_history(search_data_t *sd, int16_t **cmh_ptr, move_t move, int score
       *item += score - (*item) * _abs(score) / MAX_HISTORY_SCORE;
     }
 }
-
-void clear_killer_moves(search_data_t *sd)
-{
-  memset(sd->killer_moves, 0, sizeof(sd->killer_moves));
-}

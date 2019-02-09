@@ -393,6 +393,8 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   best_move = hash_move;
   searched_cnt = quiet_moves_cnt = 0;
 
+  sd->killer_moves[ply + 1][0] = sd->killer_moves[ply + 1][1] = 0;
+
   while ((move = next_move(&move_list, sd, hash_move, depth, ply)))
   {
     if (_m_eq(move, skip_move))
@@ -664,7 +666,6 @@ void init_search_data(search_data_t *sd, search_data_t *src_sd, int t)
   sd->hash_keys_cnt = src_sd->hash_keys_cnt;
   memcpy(sd->hash_keys, src_sd->hash_keys, sizeof(sd->hash_keys));
 
-  clear_killer_moves(sd);
   sd->nodes = sd->tbhits = 0;
 }
 
