@@ -216,7 +216,7 @@ int legal_move(position_t *pos, move_t move)
   return (_b_line[k_sq][m_to] & _b(m_from)) || (_b_line[k_sq][m_from] & _b(m_to));
 }
 
-int SEE(position_t *pos, move_t move)
+int SEE(position_t *pos, move_t move, int prune_positive)
 {
   int cnt, sq, p, pv, side, m_from, captured, captured_value, is_promotion, pqv,
       gain[MAX_CAPTURES];
@@ -235,7 +235,7 @@ int SEE(position_t *pos, move_t move)
   if (captured != EMPTY)
   {
     captured_value = piece_value[_to_white(captured)];
-    if (pv <= captured_value)
+    if (prune_positive && pv <= captured_value)
       return 0;
   }
 

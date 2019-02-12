@@ -157,11 +157,11 @@ move_t next_move(move_list_t *ml, search_data_t *sd, move_t hash_move, int depth
       continue;
 
     // put bad captures in a separate list
-    if (ml->phase == MATERIAL_MOVES && (see_score = SEE(sd->pos, next_move)) < 0)
+    if (ml->search_mode == SEARCH && ml->phase == MATERIAL_MOVES &&
+       (see_score = SEE(sd->pos, next_move, 1)) < 0)
     {
-      if (ml->search_mode == SEARCH)
-        ml->bad_captures[ml->bad_captures_cnt ++] =
-          _m_with_score(next_move, see_score);
+      ml->bad_captures[ml->bad_captures_cnt ++] =
+        _m_with_score(next_move, see_score);
       continue;
     }
 

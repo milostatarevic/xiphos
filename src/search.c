@@ -158,6 +158,9 @@ int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int 
 
   while ((move = next_move(&move_list, sd, hash_move, depth, ply)))
   {
+    if (!pos->in_check && SEE(pos, move, 1) < 0)
+      continue;
+
     if (!legal_move(pos, move))
       continue;
 
@@ -356,7 +359,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
         while ((move = next_move(&move_list, sd, hash_move, depth, ply)))
         {
-          if (_m_eq(move, hash_move) && (_m_is_quiet(move) || SEE(pos, move) < 0))
+          if (_m_is_quiet(move) || SEE(pos, move, 0) < beta_cut - static_score)
             continue;
 
           if (!legal_move(pos, move))
