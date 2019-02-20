@@ -47,7 +47,8 @@
 #define MIN_HASH_DEPTH                -2
 
 #define _futility_margin(depth)       (80 * (depth))
-#define _see_margin(depth)            (-100 * (depth))
+#define _see_quiets_margin(depth)     (-20 * _sqr((depth) - 1))
+#define _see_captures_margin(depth)   (-100 * (depth))
 #define _h_score(depth)               (_sqr(_min(depth, 16)) * 32)
 
 const int lmp[][LMP_DEPTH + 1] = {
@@ -191,9 +192,9 @@ int qsearch(search_data_t *sd, int pv_node, int alpha, int beta, int depth, int 
 int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         int depth, int ply, int use_pruning, move_t skip_move)
 {
-  int i, searched_cnt, quiet_moves_cnt, best_score, static_score, score,
-      use_hash, hash_bound, hash_score, improving, beta_cut, new_depth,
-      reduction, h_score, piece_cnt;
+  int i, searched_cnt, quiet_moves_cnt, lmp_cnt, best_score, static_score,
+      score, use_hash, hash_bound, hash_score, improving, beta_cut,
+      new_depth, reduction, h_score, piece_cnt;
   unsigned tb_result;
   move_t move, best_move, hash_move;
   hash_data_t hash_data;
@@ -394,7 +395,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
   hash_bound = HASH_UPPER_BOUND;
   best_score = -MATE_SCORE + ply;
   best_move = hash_move;
-  searched_cnt = quiet_moves_cnt = 0;
+  searched_cnt = quiet_moves_cnt = lmp_cnt = 0;
 
   sd->killer_moves[ply + 1][0] = sd->killer_moves[ply + 1][1] = 0;
 
@@ -403,23 +404,34 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     if (_m_eq(move, skip_move))
       continue;
 
-    if (!root_node)
+    lmp_cnt ++;
+    if (!root_node && searched_cnt >= 1)
     {
-      // LMP
-      if (depth <= LMP_DEPTH && move_list.phase == QUIET_MOVES &&
-          searched_cnt >= lmp[improving][depth])
+      if (_m_is_quiet(move) && !pos->in_check)
       {
-        move_list.cnt = move_list.moves_cnt;
-        continue;
+        // LMP
+        if (depth <= LMP_DEPTH && lmp_cnt > lmp[improving][depth])
+        {
+          move_list.cnt = move_list.moves_cnt;
+          continue;
+        }
+
+        // SEE pruning
+        if (SEE(pos, move, 1) < _see_quiets_margin(depth))
+          continue;
       }
 
       // prune bad captures
-      if (move_list.phase == BAD_CAPTURES && _m_score(move) < _see_margin(depth))
+      if (move_list.phase == BAD_CAPTURES &&
+          _m_score(move) < _see_captures_margin(depth))
         continue;
     }
 
     if (!legal_move(pos, move))
+    {
+      lmp_cnt --;
       continue;
+    }
 
     new_depth = depth - 1;
 
