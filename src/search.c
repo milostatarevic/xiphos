@@ -407,7 +407,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     lmp_cnt ++;
     if (!root_node && searched_cnt >= 1)
     {
-      if (_m_is_quiet(move) && !pos->in_check)
+      if (_m_is_quiet(move))
       {
         // LMP
         if (depth <= LMP_DEPTH && lmp_cnt > lmp[improving][depth])
