@@ -367,8 +367,10 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
             continue;
 
           make_move(sd, move);
-          score = -pvs(sd, 0, 0, -beta_cut, -beta_cut + 1,
-                       depth - PROBCUT_DEPTH + 1, ply + 1, 1, 0);
+          score = -qsearch(sd, 0, -beta_cut, -beta_cut + 1, 0, ply);
+          if (score >= beta_cut)
+            score = -pvs(sd, 0, 0, -beta_cut, -beta_cut + 1,
+                         depth - PROBCUT_DEPTH + 1, ply + 1, 1, 0);
           undo_move(sd);
 
           if (score >= beta_cut)
