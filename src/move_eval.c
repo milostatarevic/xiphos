@@ -51,7 +51,7 @@ int eval_quiet_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
     move = _m_base(moves[i]);
     if (move != killer_0 && move != killer_1 && move != counter)
       moves[cnt ++] = _m_set_quiet(
-        _m_with_score(move, get_h_score(sd, cmh_ptr, move))
+        _m_with_score(move, get_h_score(sd, sd->pos, cmh_ptr, move))
       );
   }
 
@@ -72,11 +72,7 @@ void eval_all_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
   {
     move = moves[i];
     if (move_is_quiet(pos, move))
-    {
-      moves[i] = _m_set_quiet(
-        _m_with_score(move, get_h_score(sd, cmh_ptr, move) / 4 - 3 * MAX_HISTORY_SCORE)
-      );
-    }
+      moves[i] = _m_set_quiet(_m_with_score(move, get_h_score(sd, pos, cmh_ptr, move)));
     else
     {
       if (_m_promoted_to(moves[i]))
@@ -87,7 +83,7 @@ void eval_all_moves(search_data_t *sd, move_t *moves, int moves_cnt, int ply)
         score = P_LIMIT + ((piece == EMPTY ? 0 : piece) << 5) -
                   pos->board[_m_from(move)];
       }
-      moves[i] = _m_with_score(move, score);
+      moves[i] = _m_with_score(move, score + 3 * MAX_HISTORY_SCORE);
     }
   }
 }

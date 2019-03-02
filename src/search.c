@@ -48,7 +48,7 @@
 #define MIN_HASH_DEPTH                -2
 
 #define _futility_margin(depth)       (80 * (depth))
-#define _see_quiets_margin(depth)     (-20 * _sqr((depth) - 1))
+#define _see_quiets_margin(depth)     (-15 * _sqr((depth) - 1))
 #define _see_captures_margin(depth)   (-100 * (depth))
 #define _h_score(depth)               (_sqr(_min(depth, 16)) * 32)
 
@@ -472,14 +472,14 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
     {
       // LMR
       reduction = 0;
-      if (depth >= LMR_DEPTH && move_list.phase == QUIET_MOVES)
+      if (depth >= LMR_DEPTH && _m_is_quiet(move))
       {
         reduction = lmr[depth][searched_cnt];
 
         if (!improving) reduction ++;
         if (reduction && pv_node) reduction --;
 
-        reduction -= 2 * _m_score(move) / MAX_HISTORY_SCORE;
+        reduction -= 2 * get_h_score(sd, pos, cmh_ptr, move) / MAX_HISTORY_SCORE;
 
         if (reduction >= new_depth)
           reduction = new_depth - 1;
@@ -531,7 +531,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
           hash_bound = HASH_LOWER_BOUND;
 
           // save history / killer / counter moves
-          if (!pos->in_check && _m_is_quiet(best_move))
+          if (_m_is_quiet(best_move))
           {
             h_score = _h_score(depth + (score > beta + 80));
 
