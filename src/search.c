@@ -36,6 +36,7 @@
 #define PROBCUT_DEPTH                 5
 #define IID_DEPTH                     5
 #define LMP_DEPTH                     10
+#define CMHP_DEPTH                    3
 #define LMR_DEPTH                     3
 #define SE_DEPTH                      8
 #define MIN_DEPTH_TO_REACH            4
@@ -194,7 +195,7 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 {
   int i, searched_cnt, quiet_moves_cnt, lmp_cnt, best_score, static_score,
       score, use_hash, hash_bound, hash_score, improving, beta_cut,
-      new_depth, reduction, h_score, piece_cnt;
+      new_depth, piece_pos, reduction, h_score, piece_cnt;
   unsigned tb_result;
   move_t move, best_move, hash_move;
   hash_data_t hash_data;
@@ -416,6 +417,15 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
         {
           move_list.cnt = move_list.moves_cnt;
           continue;
+        }
+
+        // CMH pruning
+        if (depth <= CMHP_DEPTH)
+        {
+          piece_pos = pos->board[_m_from(move)] * BOARD_SIZE + _m_to(move);
+          if ((!cmh_ptr[0] || cmh_ptr[0][piece_pos] < 0) &&
+              (!cmh_ptr[1] || cmh_ptr[1][piece_pos] < 0))
+            continue;
         }
 
         // SEE pruning
@@ -649,6 +659,7 @@ void print_best_move(search_data_t *sd)
 
 void reset_search_data(search_data_t *sd)
 {
+  int i, j, k;
   uint64_t hash_key;
 
   hash_key = sd->hash_keys[0];
@@ -656,6 +667,11 @@ void reset_search_data(search_data_t *sd)
 
   sd->pos = sd->pos_list;
   sd->hash_key = hash_key;
+
+  for (i = 0; i < P_LIMIT; i ++)
+    for (j = 0; j < BOARD_SIZE; j ++)
+      for (k = 0; k < P_LIMIT * BOARD_SIZE; k ++)
+        sd->counter_move_history[i][j][k] = -1;
 }
 
 void reset_threads_search_data()
