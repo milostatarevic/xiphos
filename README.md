@@ -16,6 +16,7 @@ I would like to thank the authors and the community involved in the creation of 
 * [Ethereal](https://github.com/AndyGrant/Ethereal/)
 * [Fathom](https://github.com/jdart1/Fathom/)
 * [Hakkapeliitta](https://github.com/mAarnos/Hakkapeliitta/)
+* [Laser](https://github.com/jeffreyan11/laser-chess-engine/)
 * [Micro-Max](http://home.hccnet.nl/h.g.muller/max-src2.html)
 * [Senpai](https://www.chessprogramming.net/senpai/)
 * [Stockfish](https://github.com/official-stockfish/Stockfish/)
