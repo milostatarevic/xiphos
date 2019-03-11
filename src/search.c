@@ -592,7 +592,10 @@ void *search_thread(void *thread_data)
 
       delta += 2 + delta / 2;
       if (score <= alpha)
+      {
+        beta = (alpha + beta) / 2;
         alpha = _max(score - delta, -MATE_SCORE);
+      }
       else if (score >= beta)
         beta = _min(score + delta, MATE_SCORE);
       else

@@ -128,7 +128,7 @@ uint64_t perft(search_data_t *sd, int depth, int ply, int additional_tests)
   {
     check_evasion_moves(pos, moves, &moves_cnt);
   }
-  else if (depth > 1 || pos->pinned || check_ep)
+  else if (depth > 1 || pos->pinned[pos->side] || check_ep)
   {
     get_all_moves(pos, moves, &moves_cnt);
     if (additional_tests)

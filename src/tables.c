@@ -271,20 +271,23 @@ const int mobility[N_PHASES][N_PIECES - 1][32] = {
 const int threats[N_PHASES][N_PIECES - 2][8] = {
   {
     {},
-    { -3, -1, 25, 56, 33 },
-    {  4, 21,  0, 41, 45 },
-    {  1, 20, 21, 10, 66 },
+    { -1,  2, 23, 55, 31 },
+    {  6, 22,  5, 38, 35 },
+    {  2, 22, 22, 10, 51 },
   }, {
     {},
-    { 13, 11, 45, 33,  9 },
-    { 10, 43, 27, 32, 47 },
-    { 14, 27, 41,  5, 26 },
+    { 13, 12, 47, 32,  5 },
+    { 10, 43, 31, 29, 45 },
+    { 14, 26, 42,  8, 23 },
   }
 };
 
-const int threat_king[N_PHASES] = {8, 24};
+const int threat_king[N_PHASES] = {-20, 23};
 const int threat_protected_pawn[N_PHASES] = {57, 51};
 const int threat_protected_pawn_push[N_PHASES] = {15, 11};
+const int threats_on_queen[N_PIECES][N_PHASES] = {
+  {}, {8, -6}, {9, 19}, {12, -4}, {}, {}
+};
 
 const int rook_file_bonus[N_PHASES][2] = { {14, 29}, {3, 6} };
 const int bishop_pair[N_PHASES] = {41, 41};

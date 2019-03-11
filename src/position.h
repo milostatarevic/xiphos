@@ -35,6 +35,7 @@ typedef struct {
            ep_sq,
            c_flag,
            in_check,
+           see_pins,
            fifty_cnt,
            phase,
            k_sq[N_SIDES];
@@ -44,11 +45,12 @@ typedef struct {
   uint64_t phash_key,
            occ[N_SIDES],
            piece_occ[N_PIECES - 1],
-           pinned;
+           pinned[N_SIDES],
+           pinners[N_SIDES];
   move_t   move;
   uint8_t  board[BOARD_SIZE];
 } __attribute__ ((aligned (16))) position_t;
-_Static_assert(sizeof(position_t) == 160, "position_t size error");
+_Static_assert(sizeof(position_t) == 192, "position_t size error");
 
 void set_pins_and_checks(position_t *);
 int is_pseudo_legal(position_t *pos, move_t move);
@@ -65,24 +67,25 @@ static inline void position_cpy(position_t *dest, position_t *src)
 #ifdef _NOPOPCNT
   *dest = *src;
 #else
-  register __m128 x0, x1, x2, x3, x4, *s, *d;
+  register __m128 x0, x1, x2, x3, x4, x5, *s, *d;
 
   s = (__m128 *)src;
   d = (__m128 *)dest;
 
-  x0 = s[0]; x1 = s[1]; x2 = s[2]; x3 = s[3]; x4 = s[4];
-  d[0] = x0; d[1] = x1; d[2] = x2; d[3] = x3; d[4] = x4;
+  x0 = s[0]; x1 = s[1]; x2 = s[2]; x3 = s[3]; x4 = s[4]; x5 = s[5];
+  d[0] = x0; d[1] = x1; d[2] = x2; d[3] = x3; d[4] = x4; d[5] = x5;
 
-  x0 = s[5]; x1 = s[6]; x2 = s[7]; x3 = s[8]; x4 = s[9];
-  d[5] = x0; d[6] = x1; d[7] = x2; d[8] = x3; d[9] = x4;
+  x0 = s[6]; x1 = s[7]; x2 = s[8]; x3 = s[9]; x4 = s[10]; x5 = s[11];
+  d[6] = x0; d[7] = x1; d[8] = x2; d[9] = x3; d[10] = x4; d[11] = x5;
 #endif
 }
 
 static inline void pins_and_attacks_to(
-  position_t *pos, int sq, int att_side, int pin_side, uint64_t *pinned,
-  uint64_t *b_att, uint64_t *r_att)
+  position_t *pos, int sq, int att_side, int pin_side,
+  uint64_t *pinned, uint64_t *pinners, uint64_t *b_att, uint64_t *r_att)
 {
-  uint64_t b, bq, rq, occ, occ_att, occ_pin;
+  int p_sq;
+  uint64_t b, bq, rq, occ, occ_att, occ_pin, line;
 
   occ_att = pos->occ[att_side];
   occ_pin = pos->occ[pin_side];
@@ -97,9 +100,17 @@ static inline void pins_and_attacks_to(
   b  = (*b_att ^ bishop_attack(occ ^ (occ_pin & *b_att), sq)) & bq;
   b |= (*r_att ^   rook_attack(occ ^ (occ_pin & *r_att), sq)) & rq;
 
-  *pinned = 0;
+  *pinned = *pinners = 0;
   _loop(b)
-    *pinned |= _b_line[sq][_bsf(b)];
+  {
+    p_sq = _bsf(b);
+    line = _b_line[sq][p_sq];
+    if (line)
+    {
+      *pinned |= line;
+      *pinners |= _b(p_sq);
+    }
+  }
   *pinned &= occ_pin;
 }
 

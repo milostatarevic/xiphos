@@ -44,6 +44,7 @@ extern const int threats[N_PHASES][N_PIECES - 2][8];
 extern const int threat_king[N_PHASES];
 extern const int threat_protected_pawn[N_PHASES];
 extern const int threat_protected_pawn_push[N_PHASES];
+extern const int threats_on_queen[N_PIECES][N_PHASES];
 
 extern const int rook_file_bonus[N_PHASES][2];
 extern const int bishop_pair[N_PHASES];

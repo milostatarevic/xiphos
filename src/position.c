@@ -25,16 +25,18 @@
 
 void set_pins_and_checks(position_t *pos)
 {
-  int k_sq, in_check;
-  uint64_t occ_o, bq, rq, b_att, r_att, pinned;
+  int k_sq, side, in_check;
+  uint64_t occ_o, bq, rq, b_att, r_att;
 
   k_sq = pos->k_sq[pos->side];
   if (k_sq == NO_SQ) return;
 
-  occ_o = pos->occ[pos->side ^ 1];
-  pins_and_attacks_to(pos, k_sq, pos->side ^ 1, pos->side, &pinned, &b_att, &r_att);
-  pos->pinned = pinned;
+  side = pos->side;
+  pins_and_attacks_to(pos, pos->k_sq[side], side ^ 1, side,
+                      &pos->pinned[side], &pos->pinners[side ^ 1],
+                      &b_att, &r_att);
 
+  occ_o = pos->occ[side ^ 1];
   bq = (pos->piece_occ[BISHOP] | pos->piece_occ[QUEEN]) & occ_o;
   rq = (pos->piece_occ[ROOK] | pos->piece_occ[QUEEN]) & occ_o;
   in_check = (b_att & bq) || (r_att & rq) ? 1 : 0;
@@ -49,6 +51,7 @@ void set_pins_and_checks(position_t *pos)
       in_check = 1;
   }
   pos->in_check = in_check;
+  pos->see_pins = 0;
 }
 
 int attacked(position_t *pos, int sq)
@@ -186,6 +189,7 @@ int is_pseudo_legal(position_t *pos, move_t move)
 int legal_move(position_t *pos, move_t move)
 {
   int m_from, m_to, w_piece, m_diff, k_sq;
+  uint64_t pinned;
 
   k_sq = pos->k_sq[pos->side];
   if (k_sq == NO_SQ) return 0;
@@ -193,8 +197,9 @@ int legal_move(position_t *pos, move_t move)
   m_from = _m_from(move);
   m_to = _m_to(move);
 
+  pinned = pos->pinned[pos->side];
   w_piece = _to_white(pos->board[m_from]);
-  if (pos->pinned == 0 && w_piece != KING && !pos->in_check &&
+  if (pinned == 0 && w_piece != KING && !pos->in_check &&
      (pos->ep_sq != m_to || w_piece != PAWN))
     return 1;
 
@@ -210,7 +215,7 @@ int legal_move(position_t *pos, move_t move)
   if (pos->in_check || (pos->ep_sq == m_to && w_piece == PAWN))
     return !attacked_after_move(pos, k_sq, move);
 
-  if ((pos->pinned & _b(m_from)) == 0)
+  if ((pinned & _b(m_from)) == 0)
     return 1;
 
   return (_b_line[k_sq][m_to] & _b(m_from)) || (_b_line[k_sq][m_from] & _b(m_to));
@@ -220,7 +225,7 @@ int SEE(position_t *pos, move_t move, int prune_positive)
 {
   int cnt, sq, p, pv, side, m_from, captured, captured_value, is_promotion, pqv,
       gain[MAX_CAPTURES];
-  uint64_t occ, pb, bq, rq, att, side_att;
+  uint64_t occ, pb, bq, rq, att, b_att, r_att, side_att;
 
   sq = _m_to(move);
   m_from = _m_from(move);
@@ -267,11 +272,23 @@ int SEE(position_t *pos, move_t move, int prune_positive)
   att |= rook_attack(occ, sq) & rq;
   att &= occ;
 
+  if (att && !pos->see_pins)
+  {
+    pos->see_pins = 1;
+    pins_and_attacks_to(pos, pos->k_sq[pos->side ^ 1], pos->side, pos->side ^ 1,
+                        &pos->pinned[pos->side ^ 1], &pos->pinners[pos->side],
+                        &b_att, &r_att);
+  }
+
   cnt = 1;
   while(att)
   {
     side ^= 1;
     side_att = att & pos->occ[side];
+
+    if (!(pos->pinners[side ^ 1] & ~occ))
+      side_att &= ~pos->pinned[side];
+
     if (side_att == 0) break;
 
     for (p = PAWN; p <= QUEEN; p ++)

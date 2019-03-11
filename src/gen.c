@@ -310,7 +310,7 @@ void king_moves(position_t *pos, move_t *moves, int *moves_cnt)
 void checks_and_material_moves(position_t *pos, move_t *moves, int *moves_cnt)
 {
   uint64_t b0, b1, oc, occ, n_occ, n_occ_f, occ_f, occ_o, p_occ,
-           n_att, b_att, r_att, pinned;
+           n_att, b_att, r_att, pinned, pinners;
   int m_from, k_sq;
   move_t *m_ptr;
 
@@ -327,7 +327,8 @@ void checks_and_material_moves(position_t *pos, move_t *moves, int *moves_cnt)
 
   k_sq = pos->k_sq[pos->side ^ 1];
   n_att = knight_attack(occ, k_sq);
-  pins_and_attacks_to(pos, k_sq, pos->side, pos->side, &pinned, &b_att, &r_att);
+  pins_and_attacks_to(pos, k_sq, pos->side, pos->side,
+                      &pinned, &pinners, &b_att, &r_att);
 
   // queen can't make discovered checks
   _add_moves(QUEEN, queen_attack, occ_o | (n_occ & (r_att | b_att)));
