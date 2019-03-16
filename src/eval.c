@@ -23,7 +23,6 @@
 #include "position.h"
 #include "tables.h"
 
-#define CHECK_SHIFT               1
 #define SAFE_CHECK_BONUS          3
 #define PUSHED_PASSERS_BONUS      10
 #define BEHIND_PAWN_BONUS         8
