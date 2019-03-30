@@ -24,7 +24,7 @@
 #include "tables.h"
 
 #define SAFE_CHECK_BONUS          3
-#define PUSHED_PASSERS_BONUS      10
+#define PUSHED_PASSERS_BONUS      9
 #define BEHIND_PAWN_BONUS         9
 #define K_SQ_ATTACK               2
 #define K_CNT_LIMIT               8
