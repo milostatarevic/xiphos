@@ -564,13 +564,13 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
 
 void *search_thread(void *thread_data)
 {
-  int depth, search_depth_cnt, score, alpha, beta, delta;
+  int depth, search_depth_cnt, score, prev_score, alpha, beta, delta;
   uint64_t target_time;
   search_data_t *sd;
 
   sd = (search_data_t *)thread_data;
 
-  score = 0;
+  score = prev_score = 0;
   for (depth = 1; depth <= search_status.max_depth; depth ++)
   {
     pthread_mutex_lock(&search_settings.mutex);
@@ -607,8 +607,11 @@ void *search_thread(void *thread_data)
     {
       uci_info(pv);
 
-      target_time =
-        search_status.target_time[search_status.tm_steps];
+      target_time = search_status.target_time[search_status.tm_steps];
+      if (prev_score > score)
+        target_time *= _min(1.0 + (double)(prev_score - score) / 80.0, 2.0);
+
+      prev_score = score;
 
       if (!search_status.go.ponder &&
            target_time > 0 && depth >= MIN_DEPTH_TO_REACH &&
