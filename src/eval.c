@@ -26,6 +26,7 @@
 #define SAFE_CHECK_BONUS          3
 #define PUSHED_PASSERS_BONUS      9
 #define BEHIND_PAWN_BONUS         9
+#define PAWN_ATTACK_BONUS         2
 #define K_SQ_ATTACK               2
 #define K_CNT_LIMIT               8
 
@@ -39,9 +40,8 @@ int eval(position_t *pos)
 {
   int side, score, score_mid, score_end, pcnt, sq, k_sq_f, k_sq_o,
       piece_o, open_file, k_score[N_SIDES], k_cnt[N_SIDES];
-  uint64_t b, b0, b1, k_zone, occ, occ_f, occ_o, occ_o_np, occ_o_nk,
-           occ_x, p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att,
-           pushed_passers, p_pushed_safe, safe_area,
+  uint64_t b, b0, b1, k_zone, occ, occ_f, occ_o, occ_o_np, occ_o_nk, occ_x,
+           p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att, pushed_passers, safe_area,
            p_pushed[N_SIDES], mob_area[N_SIDES], att_area[N_SIDES],
            d_att_area[N_SIDES], checks[N_SIDES], piece_att[N_SIDES][N_PIECES];
   phash_data_t phash_data;
@@ -188,16 +188,17 @@ int eval(position_t *pos)
   // use precalculated attacks (a separate loop is required)
   for (side = WHITE; side < N_SIDES; side ++)
   {
-    p_pushed_safe = p_pushed[side] & (att_area[side] | ~att_area[side ^ 1]);
+    safe_area = att_area[side] | ~att_area[side ^ 1];
 
     // pawn mobility
-    pcnt = _popcnt(p_pushed_safe);
+    pcnt = _popcnt(p_pushed[side] & safe_area);
     score_mid += pcnt * pawn_mobility[PHASE_MID];
     score_end += pcnt * pawn_mobility[PHASE_END];
 
     // pawn attacks on the king zone
-    b = p_pushed_safe & _b_king_zone[pos->k_sq[side ^ 1]];
-    k_score[side] += _popcnt(b);
+    b = pawn_attacks(p_occ & pos->occ[side] & safe_area, side);
+    k_score[side] +=
+      _popcnt(b & _b_king_zone[pos->k_sq[side ^ 1]]) * PAWN_ATTACK_BONUS;
 
     // bonus for safe checks
     b = checks[side] & ~pos->occ[side];
