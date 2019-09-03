@@ -457,6 +457,15 @@ int pvs(search_data_t *sd, int root_node, int pv_node, int alpha, int beta,
       if (score < beta_cut)
         new_depth ++;
     }
+    // cmh extension
+    else if (_m_is_quiet(move))
+    {
+      piece_pos = pos->board[_m_from(move)] * BOARD_SIZE + _m_to(move);
+      if (cmh_ptr[0] && cmh_ptr[1] &&
+          cmh_ptr[0][piece_pos] >= MAX_HISTORY_SCORE / 2 &&
+          cmh_ptr[1][piece_pos] >= MAX_HISTORY_SCORE / 2)
+        new_depth ++;
+    }
 
     // make move
     make_move(sd, move);
