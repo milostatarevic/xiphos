@@ -42,7 +42,7 @@ int eval(position_t *pos)
       piece_o, open_file, k_score[N_SIDES], k_cnt[N_SIDES];
   uint64_t b, b0, b1, k_zone, occ, occ_f, occ_o, occ_o_np, occ_o_nk, occ_x,
            p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att, pushed_passers, safe_area,
-           p_pushed[N_SIDES], mob_area[N_SIDES], att_area[N_SIDES],
+           p_safe_att, p_pushed[N_SIDES], mob_area[N_SIDES], att_area[N_SIDES],
            d_att_area[N_SIDES], checks[N_SIDES], piece_att[N_SIDES][N_PIECES];
   phash_data_t phash_data;
 
@@ -71,7 +71,6 @@ int eval(position_t *pos)
     occ_o = pos->occ[side ^ 1];
     p_occ_f = p_occ & occ_f;
     p_occ_o = p_occ & occ_o;
-    occ_o_np = occ_o & ~p_occ_o;
     occ_o_nk = occ_o & ~_b(k_sq_o);
     occ_x = occ ^ pos->piece_occ[QUEEN];
 
@@ -159,16 +158,6 @@ int eval(position_t *pos)
       score_end += threat_king[PHASE_END];
     }
 
-    // threats by protected pawns
-    pcnt = _popcnt(pawn_attacks(att_area[side] & p_occ_f, side) & occ_o_np);
-    score_mid += pcnt * threat_protected_pawn[PHASE_MID];
-    score_end += pcnt * threat_protected_pawn[PHASE_END];
-
-    // threats by protected pawns (after push)
-    pcnt = _popcnt(pawn_attacks(att_area[side] & p_pushed[side], side) & occ_o_np);
-    score_mid += pcnt * threat_protected_pawn_push[PHASE_MID];
-    score_end += pcnt * threat_protected_pawn_push[PHASE_END];
-
     // N/B behind pawns
     b = (side == WHITE ? p_occ << 8 : p_occ >> 8) & occ_f &
         (pos->piece_occ[KNIGHT] | pos->piece_occ[BISHOP]);
@@ -188,6 +177,11 @@ int eval(position_t *pos)
   // use precalculated attacks (a separate loop is required)
   for (side = WHITE; side < N_SIDES; side ++)
   {
+    occ_f = pos->occ[side];
+    occ_o = pos->occ[side ^ 1];
+    p_occ_f = p_occ & occ_f;
+    p_occ_o = p_occ & occ_o;
+    occ_o_np = occ_o & ~p_occ_o;
     safe_area = att_area[side] | ~att_area[side ^ 1];
 
     // pawn mobility
@@ -196,12 +190,22 @@ int eval(position_t *pos)
     score_end += pcnt * pawn_mobility[PHASE_END];
 
     // pawn attacks on the king zone
-    b = pawn_attacks(p_occ & pos->occ[side] & safe_area, side);
+    p_safe_att = pawn_attacks(p_occ_f & safe_area, side);
     k_score[side] +=
-      _popcnt(b & _b_king_zone[pos->k_sq[side ^ 1]]) * PAWN_ATTACK_BONUS;
+      _popcnt(p_safe_att & _b_king_zone[pos->k_sq[side ^ 1]]) * PAWN_ATTACK_BONUS;
+
+    // threats by protected pawns
+    pcnt = _popcnt(p_safe_att & occ_o_np);
+    score_mid += pcnt * threat_protected_pawn[PHASE_MID];
+    score_end += pcnt * threat_protected_pawn[PHASE_END];
+
+    // threats by protected pawns (after push)
+    pcnt = _popcnt(pawn_attacks(p_pushed[side] & safe_area, side) & occ_o_np);
+    score_mid += pcnt * threat_protected_pawn_push[PHASE_MID];
+    score_end += pcnt * threat_protected_pawn_push[PHASE_END];
 
     // bonus for safe checks
-    b = checks[side] & ~pos->occ[side];
+    b = checks[side] & ~occ_f;
     b &= ~att_area[side ^ 1] |
         (d_att_area[side] & ~d_att_area[side ^ 1] &
         (piece_att[side ^ 1][KING] | piece_att[side ^ 1][QUEEN]));
@@ -229,7 +233,7 @@ int eval(position_t *pos)
         score_end += pcnt * threats_on_queen[piece][PHASE_END];                \
       }
 
-    b = pos->piece_occ[QUEEN] & pos->occ[side ^ 1];
+    b = pos->piece_occ[QUEEN] & occ_o;
     if (b)
     {
       sq = _bsf(b);
