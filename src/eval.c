@@ -39,7 +39,7 @@ const int k_cnt_mul[K_CNT_LIMIT] = { 0, 3, 7, 12, 16, 18, 19, 20 };
 int eval(position_t *pos)
 {
   int side, score, score_mid, score_end, pcnt, sq, k_sq_f, k_sq_o,
-      piece_o, open_file, k_score[N_SIDES], k_cnt[N_SIDES];
+      piece_o, open_file, initiative_bonus, k_score[N_SIDES], k_cnt[N_SIDES];
   uint64_t b, b0, b1, k_zone, occ, occ_f, occ_o, occ_o_np, occ_o_nk, occ_x,
            p_occ, p_occ_f, p_occ_o, n_att, b_att, r_att, pushed_passers, safe_area,
            p_safe_att, p_pushed[N_SIDES], mob_area[N_SIDES], att_area[N_SIDES],
@@ -256,6 +256,16 @@ int eval(position_t *pos)
     score_end = -score_end;
   }
 
+  // initiative
+  initiative_bonus =
+    initiative[0] * _popcnt(p_occ) +
+    initiative[1] * ((p_occ & _B_Q_SIDE) && (p_occ & _B_K_SIDE)) +
+    initiative[2] * (_popcnt(occ & ~p_occ) == 2) -
+    initiative[3];
+
+  score_end += _sign(score_end) * _max(initiative_bonus, -_abs(score_end));
+
+  // score interpolation
   if (pos->phase >= TOTAL_PHASE)
     score = score_end;
   else

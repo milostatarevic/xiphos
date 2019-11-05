@@ -292,6 +292,7 @@ const int threats_on_queen[N_PIECES][N_PHASES] = {
 const int rook_file_bonus[N_PHASES][2] = { {13, 27}, {2, 5} };
 const int bishop_pair[N_PHASES] = {40, 42};
 const int pawn_mobility[N_PHASES] = {1, 7};
+const int initiative[4] = {4, 66, 71, 89};
 
 void init_distance()
 {

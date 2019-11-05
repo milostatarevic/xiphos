@@ -49,6 +49,7 @@ extern const int threats_on_queen[N_PIECES][N_PHASES];
 extern const int rook_file_bonus[N_PHASES][2];
 extern const int bishop_pair[N_PHASES];
 extern const int pawn_mobility[N_PHASES];
+extern const int initiative[4];
 
 void init_pst();
 void init_distance();

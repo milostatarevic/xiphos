@@ -34,6 +34,9 @@
 #define _B_FILE_A       0x0101010101010101ULL
 #define _B_FILE_H       0x8080808080808080ULL
 
+#define _B_Q_SIDE       0x0f0f0f0f0f0f0f0fULL
+#define _B_K_SIDE       0xf0f0f0f0f0f0f0f0ULL
+
 #define _B_RING         0x007e7e7e7e7e7e00ULL
 #define _B_RING_C       0x817e7e7e7e7e7e81ULL
 
