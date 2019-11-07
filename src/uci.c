@@ -316,8 +316,7 @@ void uci_info(move_t *pv)
 
   score = search_status.score;
   if (_is_mate_score(score))
-    sprintf(buf, "mate %d",
-            (MATE_SCORE - _abs(score)) / 2 * ((score >= 0) ? 1 : -1));
+    sprintf(buf, "mate %d", (score > 0 ? MATE_SCORE - score + 1 : -MATE_SCORE - score) / 2);
   else
     sprintf(buf, "cp %d", score);
 
