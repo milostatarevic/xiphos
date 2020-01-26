@@ -24,6 +24,7 @@
 #include "hash.h"
 #include "make.h"
 #include "perft.h"
+#include "phash.h"
 #include "position.h"
 #include "search.h"
 #include "fathom/tbprobe.h"
@@ -363,6 +364,7 @@ void set_max_threads(int thread_cnt)
     (search_data_t *) realloc(
       search_settings.threads_search_data, search_settings.max_threads * sizeof(search_data_t)
     );
+  init_phash(search_settings.max_threads);
   reset_threads_search_data();
   _p("threads=%d\n", search_settings.max_threads);
 }
@@ -424,7 +426,8 @@ void uci()
     {
       _p("id name %s %s\n", VERSION, ARCH);
       _p("id author %s\n", AUTHOR);
-      _p("option name Hash type spin default %d min 1 max 32768\n", DEFAULT_HASH_SIZE_IN_MB);
+      _p("option name Hash type spin default %d min 1 max %d\n",
+         DEFAULT_HASH_SIZE_IN_MB, MAX_HASH_SIZE_IN_MB);
       _p("option name Threads type spin default 1 min 1 max %d\n", MAX_THREADS);
       _p("option name Ponder type check default false\n");
       _p("option name SyzygyPath type string default <empty>\n");

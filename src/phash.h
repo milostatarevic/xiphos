@@ -33,6 +33,6 @@ typedef union {
 
 int get_phash_data(position_t *, phash_data_t *);
 phash_data_t set_phash_data(position_t *, uint64_t, int, int);
-void init_phash();
+void init_phash(int);
 
 #endif

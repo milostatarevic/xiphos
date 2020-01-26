@@ -19,16 +19,17 @@
 #include <stdlib.h>
 #include "phash.h"
 
-#define PHASH_SIZE_BITS     18
-#define PHASH_SIZE          (1 << PHASH_SIZE_BITS)
-#define PHASH_MASK          (PHASH_SIZE - 1)
+#define PHASH_BASE_SIZE    (1 << 16)
 
 typedef struct {
   uint64_t mask;
   phash_data_t data;
 } phash_item_t;
 
-phash_item_t *shared_phash;
+struct {
+  phash_item_t *items;
+  uint64_t mask;
+} phash_store;
 
 static inline uint64_t xor_data(phash_data_t *phash_data)
 {
@@ -39,7 +40,7 @@ int get_phash_data(position_t *pos, phash_data_t *phash_data)
 {
   phash_item_t *phash_item;
 
-  phash_item = shared_phash + (pos->phash_key & PHASH_MASK);
+  phash_item = phash_store.items + (pos->phash_key & phash_store.mask);
   *phash_data = phash_item->data;
   return (pos->phash_key ^ phash_item->mask) == xor_data(phash_data);
 }
@@ -54,14 +55,23 @@ phash_data_t set_phash_data(position_t *pos, uint64_t pushed_passers,
   phash_data.score_mid = score_mid;
   phash_data.score_end = score_end;
 
-  phash_item = shared_phash + (pos->phash_key & PHASH_MASK);
+  phash_item = phash_store.items + (pos->phash_key & phash_store.mask);
   phash_item->data = phash_data;
   phash_item->mask = pos->phash_key ^ xor_data(&phash_data);
 
   return phash_data;
 }
 
-void init_phash()
+void init_phash(int max_threads)
 {
-  shared_phash = (phash_item_t *) malloc(PHASH_SIZE * sizeof(phash_item_t));
+  uint64_t size, rounded_size;
+
+  size = (2 * max_threads - 1) * PHASH_BASE_SIZE;
+  rounded_size = 1;
+  while (size >>= 1)
+    rounded_size <<= 1;
+
+  phash_store.mask = rounded_size - 1;
+  phash_store.items =
+    (phash_item_t *)realloc(phash_store.items, rounded_size * sizeof(phash_item_t));
 }

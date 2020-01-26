@@ -24,7 +24,6 @@
 #include "make.h"
 #include "pawn_eval.h"
 #include "perft.h"
-#include "phash.h"
 #include "position.h"
 #include "search.h"
 #include "tables.h"
@@ -35,7 +34,6 @@ int main(int argc, char **argv)
   init_rook_c_flag_mask();
   init_bitboards();
   init_distance();
-  init_phash();
   init_pst();
   init_lmr();
 
