@@ -35,11 +35,11 @@ enum {
   Z_KEYS_MAX_INDEX,
 };
 
-struct {
+typedef struct {
   uint64_t positions[SQ_LIMIT][Z_KEYS_MAX_INDEX];
   uint64_t c_flags[C_FLAG_MAX];
   uint64_t side_flag;
-} shared_z_keys;
+} shared_z_keys_t;
 
 typedef union {
   struct {
@@ -51,6 +51,8 @@ typedef union {
   uint64_t raw;
 } hash_data_t;
 _Static_assert(sizeof(hash_data_t) == 8, "hash_data_t size error");
+
+extern shared_z_keys_t shared_z_keys;
 
 int adjust_hash_score(int, int);
 hash_data_t get_hash_data(search_data_t *);

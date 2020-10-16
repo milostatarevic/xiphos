@@ -36,6 +36,8 @@ struct {
   uint32_t iter;
 } hash_store;
 
+shared_z_keys_t shared_z_keys;
+
 uint64_t rand64()
 {
   int i;
