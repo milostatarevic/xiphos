@@ -40,19 +40,22 @@ typedef struct {
   uint64_t hash_keys[MAX_GAME_PLY];
 } search_data_t;
 
-struct {
+typedef struct {
   int max_depth, done, search_finished, score, depth, tm_steps;
   uint64_t time_in_ms, max_time, target_time[TM_STEPS];
   struct {
     int infinite, ponder, time, inc, movestogo, depth, movetime;
   } go;
-} search_status;
+} search_status_t;
 
-struct {
+typedef struct {
   int max_threads, ponder_mode, tb_probe_depth;
   search_data_t *sd, *threads_search_data;
   pthread_mutex_t mutex;
-} search_settings;
+} search_settings_t;
+
+extern search_settings_t search_settings;
+extern search_status_t search_status;
 
 void init_lmr();
 void reset_search_data(search_data_t *);

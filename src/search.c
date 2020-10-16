@@ -52,6 +52,9 @@
 #define _see_captures_margin(depth)   (-100 * (depth))
 #define _h_score(depth)               (_sqr(_min(depth, 16)) * 32)
 
+search_settings_t search_settings;
+search_status_t search_status;
+
 const int lmp[][LMP_DEPTH + 1] = {
   { 0, 2, 3, 5, 9, 13, 18, 25, 34, 45, 55 },
   { 0, 5, 6, 9, 14, 21, 30, 41, 55, 69, 84 }
