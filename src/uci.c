@@ -354,7 +354,7 @@ void set_hash_size(int hash_size_in_mb)
 
   allocated_memory = init_hash(hash_size_in_mb);
   reset_hash_key(search_settings.sd);
-  _p("hash=%"PRIu64"MB\n", allocated_memory >> 20);
+  _p("info hash=%"PRIu64"MB\n", allocated_memory >> 20);
 }
 
 void set_max_threads(int thread_cnt)
@@ -366,7 +366,7 @@ void set_max_threads(int thread_cnt)
     );
   init_phash(search_settings.max_threads);
   reset_threads_search_data();
-  _p("threads=%d\n", search_settings.max_threads);
+  _p("info threads=%d\n", search_settings.max_threads);
 }
 
 void set_ponder(char *buf)
