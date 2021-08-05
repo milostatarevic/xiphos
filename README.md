@@ -2,11 +2,16 @@
 
 ### Overview
 
-Xiphos is a UCI chess engine. The engine employs the modern search techniques and supports multithreading. The latest release, including the binaries for various platforms, can be found [here](https://github.com/milostatarevic/xiphos/releases).
+Xiphos is a classical alpha-beta chess engine with a handcrafted evaluation function.
+The project is inspired by Garry Kasparov's "[Deep Thinking](http://www.kasparov.com/deep-thinking-ai)". This fantastic book has evoked my childhood passion, computer chess. I was wondering how hard it could be to develop an engine strong enough to surpass the legendary Deep Blue, so I gave it a try.
+
+The latest release, including the binaries for various platforms, can be found [here](https://github.com/milostatarevic/xiphos/releases).
+
+### Performance
+
+CCRL 40/15: 3300+ ELO (4CPU), peak ranking [5th](https://web.archive.org/web/20191207183101/https://ccrl.chessdom.com/ccrl/4040/) (Dec 2019)
 
 ### Acknowledgements
-
-This project is inspired by Garry Kasparov's "[Deep Thinking: Where Machine Intelligence Ends and Human Creativity Begins](http://www.kasparov.com/deep-thinking-ai)." This fantastic book has evoked my childhood passion, computer chess. I was wondering how hard it could be to develop an engine strong enough to surpass the legendary Deep Blue, so I gave it a try.
 
 I would like to thank the authors and the community involved in the creation of the open source projects listed below. Their work greatly inspired me, and without them, this project wouldn't exist.
 
